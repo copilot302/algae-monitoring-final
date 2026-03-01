@@ -1,8 +1,13 @@
+providers = ['node']
+
 [phases.setup]
 nixPkgs = ['nodejs_20']
 
 [phases.install]
-cmds = ['cd server && npm ci --production=false']
+cmds = ['cd server && npm install']
+
+[phases.build]
+cmds = ['echo "Build complete"']
 
 [start]
 cmd = 'cd server && npm start'
