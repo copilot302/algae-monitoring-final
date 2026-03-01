@@ -20,20 +20,6 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/sensor-data', sensorDataRoutes);
 
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({ 
-    name: 'PhycoSense API',
-    version: '1.0.0',
-    status: 'running',
-    endpoints: {
-      health: '/api/health',
-      sensorData: '/api/sensor-data',
-      sensorDataByDevice: '/api/sensor-data/:deviceId'
-    }
-  });
-});
-
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'PhycoSense API is running' });

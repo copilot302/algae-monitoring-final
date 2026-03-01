@@ -12,15 +12,34 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+// #include <WiFiManager.h>  // https://github.com/tzapu/WiFiManager
+// #include <Preferences.h>
 
-// --- WiFi Credentials (UPDATE THESE) ---
-const char* ssid = "Converge_2.4GHz_R6z9";
-const char* password = "Retirado0706";
-const char* serverUrl = "http://192.168.100.7:5000/api/sensor-data";
+// --- WiFi Provisioning Configuration ---
+// NOTE: Full WiFi provisioning coming soon. For now, use hardcoded credentials.
+// For testing WiFi provisioning, use phycosense_no_sensors.ino
 
-// --- Device Configuration (UPDATE FOR EACH DEVICE) ---
-const char* deviceId = "POND-02";        // Unique ID: POND-01, POND-02, TANK-A, etc.
-const char* deviceName = "Pond 2";    // Display name: "Main Pond", "Tank A", etc.
+// Temporary hardcoded credentials (will be replaced with provisioning)
+const char* ssid = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD"; 
+String serverUrl = "http://192.168.100.7:5000/api/sensor-data";
+String deviceId = "ESP32-SENSOR-01";
+String deviceName = "Sensor Device";
+
+/* WiFi Provisioning Variables (disabled for now)
+Preferences preferences;
+String deviceId;             // Auto-generated unique ID from MAC
+String deviceName;           // User-configurable device name
+String serverUrl;            // Server URL configured during provisioning
+String backupServerUrl;      // Optional local backup server
+
+// Provisioning mode button (Optional - use GPIO 0 / BOOT button)
+#define PROVISION_BUTTON 0
+#define PROVISION_HOLD_TIME 5000  // Hold for 5 seconds to reset
+
+// Device status
+bool isProvisioned = false;
+*/
 
 // --- Hardware Definitions ---
 #define ONE_WIRE_BUS 4      // DS18B20 Data Pin
@@ -186,6 +205,10 @@ void connectWiFi() {
         Serial.println("\n✓ WiFi Connected!");
         Serial.print("IP Address: ");
         Serial.println(WiFi.localIP());
+        Serial.print("Device ID: ");
+        Serial.println(deviceId);
+        Serial.print("Device Name: ");
+        Serial.println(deviceName);
         Serial.print("Sending data to: ");
         Serial.println(serverUrl);
     } else {
@@ -227,7 +250,7 @@ void sendDataToServer(float temp, float pH, float ecVal, float turbidity) {
     Serial.print(">> Sending JSON: ");
     Serial.println(jsonString);
     
-    http.begin(serverUrl);
+    http.begin(serverUrl.c_str());
     http.addHeader("Content-Type", "application/json");
     
     int httpResponseCode = http.POST(jsonString);

@@ -15,7 +15,7 @@ const DeviceSelector = ({ selectedDevice, onDeviceChange }) => {
 
   const fetchDevices = async () => {
     try {
-      const response = await fetch('http://192.168.100.7:5000/api/sensor-data/devices');
+      const response = await fetch('http://localhost:5000/api/sensor-data/devices');
       if (response.ok) {
         const data = await response.json();
         setDevices(data);
