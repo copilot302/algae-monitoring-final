@@ -22,7 +22,7 @@
 // Temporary hardcoded credentials (will be replaced with provisioning)
 const char* ssid = "YOUR_WIFI_NAME";
 const char* password = "YOUR_WIFI_PASSWORD"; 
-String serverUrl = "http://192.168.100.7:5000/api/sensor-data";
+String serverUrl = "https://algae-monitoring-final-production.up.railway.app/api/sensor-data";
 String deviceId = "ESP32-SENSOR-01";
 String deviceName = "Sensor Device";
 
