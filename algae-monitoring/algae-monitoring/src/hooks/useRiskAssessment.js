@@ -1,0 +1,104 @@
+import { useMemo } from 'react';
+
+// Risk thresholds for algae bloom prediction (based on Random Forest algorithm)
+const THRESHOLDS = {
+  temperature: {
+    normal: { max: 20 },      // Normal: < 20°C
+    moderate: { max: 25 },    // Moderate: 20-25°C, High: > 25°C
+  },
+  dissolvedOxygen: {
+    normal: { min: 5 },       // Normal: > 5 mg/L
+    moderate: { min: 2 },     // Moderate: 2-5 mg/L, High: < 2 mg/L
+  },
+  ph: {
+    normal: { max: 8.5 },     // Normal: < 8.5
+    moderate: { max: 9 },     // Moderate: 8.5-9, High: > 9
+  },
+  electricalConductivity: {
+    normal: { max: 800 },     // Normal: < 800 µS/cm
+    moderate: { max: 1000 },  // Moderate: 800-1000 µS/cm, High: > 1000 µS/cm
+  },
+  turbidity: {
+    normal: { max: 10 },      // Normal: < 10 NTU
+    moderate: { max: 50 },    // Moderate: 10-50 NTU, High: > 50 NTU
+  }
+};
+
+export const useRiskAssessment = (sensorData) => {
+  const riskLevels = useMemo(() => {
+    const risks = {};
+    
+    // Temperature: Higher = Higher Risk
+    const temp = sensorData.temperature;
+    if (temp < THRESHOLDS.temperature.normal.max) {
+      risks.temperature = 'normal';
+    } else if (temp < THRESHOLDS.temperature.moderate.max) {
+      risks.temperature = 'moderate';
+    } else {
+      risks.temperature = 'high';
+    }
+    
+    // Dissolved Oxygen: Lower = Higher Risk (inverted logic)
+    const do_val = sensorData.dissolvedOxygen;
+    if (do_val > THRESHOLDS.dissolvedOxygen.normal.min) {
+      risks.dissolvedOxygen = 'normal';
+    } else if (do_val > THRESHOLDS.dissolvedOxygen.moderate.min) {
+      risks.dissolvedOxygen = 'moderate';
+    } else {
+      risks.dissolvedOxygen = 'high';
+    }
+    
+    // pH: Higher = Higher Risk
+    const ph = sensorData.ph;
+    if (ph < THRESHOLDS.ph.normal.max) {
+      risks.ph = 'normal';
+    } else if (ph < THRESHOLDS.ph.moderate.max) {
+      risks.ph = 'moderate';
+    } else {
+      risks.ph = 'high';
+    }
+    
+    // Electrical Conductivity: Higher = Higher Risk
+    const ec = sensorData.electricalConductivity;
+    if (ec < THRESHOLDS.electricalConductivity.normal.max) {
+      risks.electricalConductivity = 'normal';
+    } else if (ec < THRESHOLDS.electricalConductivity.moderate.max) {
+      risks.electricalConductivity = 'moderate';
+    } else {
+      risks.electricalConductivity = 'high';
+    }
+    
+    // Turbidity: Higher = Higher Risk
+    const turbidity = sensorData.turbidity;
+    if (turbidity < THRESHOLDS.turbidity.normal.max) {
+      risks.turbidity = 'normal';
+    } else if (turbidity < THRESHOLDS.turbidity.moderate.max) {
+      risks.turbidity = 'moderate';
+    } else {
+      risks.turbidity = 'high';
+    }
+    
+    return risks;
+  }, [sensorData]);
+
+  const overallRisk = useMemo(() => {
+    const riskValues = Object.values(riskLevels);
+    const highCount = riskValues.filter(risk => risk === 'high').length;
+    const moderateCount = riskValues.filter(risk => risk === 'moderate').length;
+    
+    if (highCount > 0) {
+      return 'high';
+    } else if (moderateCount >= 2) {
+      return 'moderate';
+    } else if (moderateCount >= 1) {
+      return 'moderate';
+    }
+    
+    return 'normal';
+  }, [riskLevels]);
+
+  return {
+    riskLevels,
+    overallRisk
+  };
+};
