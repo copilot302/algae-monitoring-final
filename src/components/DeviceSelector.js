@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Icon from './Icon';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/sensor-data';
+
 const DeviceSelector = ({ selectedDevice, onDeviceChange }) => {
   const [devices, setDevices] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -15,7 +17,7 @@ const DeviceSelector = ({ selectedDevice, onDeviceChange }) => {
 
   const fetchDevices = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/sensor-data/devices');
+      const response = await fetch(`${API_URL}/devices`);
       if (response.ok) {
         const data = await response.json();
         setDevices(data);
