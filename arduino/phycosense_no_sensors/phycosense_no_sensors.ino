@@ -147,7 +147,7 @@ void startProvisioningMode() {
     WiFiManagerParameter custom_name("name", "Device Name", g_deviceId.c_str(), 40,
         "placeholder=\"My Test Device\"");
     WiFiManagerParameter custom_backup("backup", "Backup Server (Optional)", "", 100,
-        "placeholder=\"http://192.168.1.100:5000/api\"");
+        "placeholder=\"http://192.168.100.7:5000/api\"");
     
     // Add HTML for better UI
     WiFiManagerParameter custom_html("<br/><p><b>PhycoSense Device Setup</b></p><p>Device ID: ");
@@ -181,7 +181,7 @@ void startProvisioningMode() {
     
     // Set default values if empty
     if (g_serverUrl.length() == 0) {
-        g_serverUrl = "http://192.168.1.100:5000/api/sensor-data";
+        g_serverUrl = "http://192.168.100.7:5000/api/sensor-data";
         Serial.println("⚠ No server URL provided, using default");
     }
     if (g_deviceName.length() == 0) {
