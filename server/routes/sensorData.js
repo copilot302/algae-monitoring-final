@@ -96,6 +96,37 @@ router.get('/latest', async (req, res) => {
   }
 });
 
+// @route   POST /api/sensor-data/devices/register
+// @desc    Register a new device (ESP32 compatibility)
+// @access  Public
+router.post('/devices/register', async (req, res) => {
+  try {
+    const { deviceId, deviceName, firmwareVersion } = req.body;
+    
+    // Check if device already exists
+    const existingDevice = await SensorData.findOne({ deviceId }).sort({ timestamp: -1 });
+    
+    if (existingDevice) {
+      return res.status(200).json({
+        message: 'Device already registered',
+        deviceId,
+        deviceName: existingDevice.deviceName || deviceName
+      });
+    }
+    
+    // Return success - device will be registered when first data is sent
+    res.status(201).json({
+      message: 'Device registration acknowledged',
+      deviceId,
+      deviceName,
+      note: 'Device will be fully registered upon first data transmission'
+    });
+  } catch (error) {
+    console.error('Device registration error:', error.message);
+    res.status(400).json({ message: error.message });
+  }
+});
+
 // @route   GET /api/sensor-data/devices
 // @desc    Get list of all devices
 // @access  Public
