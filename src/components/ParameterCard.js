@@ -2,6 +2,7 @@ import React from 'react';
 import Icon from './Icon';
 import LineChart from './LineChart';
 import CircularGauge from './CircularGauge';
+import TankGauge from './TankGauge';
 import { calculateTrend } from '../utils/trendAnalysis';
 
 const ParameterCard = ({ 
@@ -55,7 +56,15 @@ const ParameterCard = ({
       </div>
       
       <div className="card-content">
-        {type === 'gauge' ? (
+        {type === 'tank' ? (
+          <div className="tank-container-wrapper">
+            <TankGauge 
+              value={value} 
+              unit={unit}
+              title={title}
+            />
+          </div>
+        ) : type === 'gauge' ? (
           <div className="gauge-container">
             <CircularGauge 
               value={value} 

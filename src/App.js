@@ -103,7 +103,7 @@ const App = () => {
               unit="%"
               data={dataHistory.probioticLevel}
               riskLevel={riskLevels.probioticLevel}
-              type="gauge"
+              type="tank"
               min={0}
               max={100}
             />
