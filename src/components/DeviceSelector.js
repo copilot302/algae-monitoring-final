@@ -3,10 +3,13 @@ import Icon from './Icon';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/sensor-data';
 
-const DeviceSelector = ({ selectedDevice, onDeviceChange }) => {
+const DeviceSelector = ({ selectedDevice, onDeviceChange, allowedDevices }) => {
   const [devices, setDevices] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Get the list of allowed device IDs
+  const allowedIds = allowedDevices ? allowedDevices.map(d => d.deviceId) : null;
 
   useEffect(() => {
     fetchDevices();
@@ -19,7 +22,13 @@ const DeviceSelector = ({ selectedDevice, onDeviceChange }) => {
     try {
       const response = await fetch(`${API_URL}/devices`);
       if (response.ok) {
-        const data = await response.json();
+        let data = await response.json();
+        
+        // Filter to only show authenticated devices
+        if (allowedIds) {
+          data = data.filter(d => allowedIds.includes(d.deviceId));
+        }
+        
         setDevices(data);
         
         // If no device is selected and devices exist, select the first one

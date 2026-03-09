@@ -22,6 +22,17 @@ String g_backupServerUrl = "";      // Optional backup server
 
 // Device status
 bool isProvisioned = false;
+String g_accessKey = "";           // Access key for dashboard login
+
+// Key portal (AP mode after registration)
+#include <WebServer.h>
+WebServer keyServer(80);
+bool keyPortalRunning = false;
+unsigned long keyPortalStartTime = 0;
+const unsigned long KEY_PORTAL_DURATION = 600000; // 10 minutes
+
+// Production server URL (customer doesn't need to enter this)
+const String PRODUCTION_SERVER = "https://algae-monitoring-final-production.up.railway.app/api/sensor-data";
 
 // --- Battery Monitoring (Optional) ---
 #define BATTERY_PIN 35
@@ -85,6 +96,7 @@ bool loadConfiguration() {
     g_serverUrl = preferences.getString("serverUrl", "");
     g_deviceName = preferences.getString("deviceName", "");
     g_backupServerUrl = preferences.getString("backupUrl", "");
+    g_accessKey = preferences.getString("accessKey", "");
     
     preferences.end();
     
@@ -105,6 +117,9 @@ void saveConfiguration(String server, String name, String backup = "") {
     preferences.putString("deviceName", name);
     if (backup.length() > 0) {
         preferences.putString("backupUrl", backup);
+    }
+    if (g_accessKey.length() > 0) {
+        preferences.putString("accessKey", g_accessKey);
     }
     
     preferences.end();
@@ -128,86 +143,53 @@ void clearConfiguration() {
 
 // Start WiFi provisioning mode (captive portal)
 void startProvisioningMode() {
-    Serial.println("\n╔════════════════════════════════════════╗");
-    Serial.println("║   PROVISIONING MODE ACTIVATED          ║");
-    Serial.println("╚════════════════════════════════════════╝");
-    Serial.println("1. Connect to WiFi hotspot:");
-    Serial.print("   SSID: PhycoSense-");
+    Serial.println("\n=== PROVISIONING MODE ===");
+    Serial.print("Connect to hotspot: PhycoSense-");
     Serial.println(g_deviceId);
-    Serial.println("   Password: phyco123");
-    Serial.println("2. Captive portal will open automatically");
-    Serial.println("3. Enter your WiFi credentials & server URL");
-    Serial.println("\nWaiting for configuration...\n");
-    
+    Serial.println("Password: phyco123");
+    Serial.println("Portal will open automatically.\n");
+
     WiFiManager wm;
-    
-    // Custom parameters for server configuration
-    WiFiManagerParameter custom_server("server", "Server URL", "", 100, 
-        "placeholder=\"http://yourserver.com/api\"");
-    WiFiManagerParameter custom_name("name", "Device Name", g_deviceId.c_str(), 40,
-        "placeholder=\"My Test Device\"");
-    WiFiManagerParameter custom_backup("backup", "Backup Server (Optional)", "", 100,
-        "placeholder=\"http://192.168.100.7:5000/api\"");
-    
-    // Add HTML for better UI
-    WiFiManagerParameter custom_html("<br/><p><b>PhycoSense Device Setup</b></p><p>Device ID: ");
-    WiFiManagerParameter custom_html2(g_deviceId.c_str());
-    WiFiManagerParameter custom_html3("</p>");
-    
+
+    // Only ask for device name — server URL is hardcoded
+    WiFiManagerParameter custom_name("name", "Pond / Device Name", g_deviceId.c_str(), 40,
+        "placeholder=\"e.g. Main Pond\"");
+
+    WiFiManagerParameter custom_html(
+        "<br/>"
+        "<div style='background:#e8f5e9;border-radius:8px;padding:14px;margin:10px 0;font-size:14px;color:#2e7d32'>"
+        "<b>PhycoSense Setup</b><br/>"
+        "Enter your WiFi password and give your device a name.<br/>"
+        "After saving, reconnect to <b>PhycoSense-" + g_deviceId + "</b> and open "
+        "<b>192.168.4.1</b> to get your dashboard access key."
+        "</div>"
+    );
+
     wm.addParameter(&custom_html);
-    wm.addParameter(&custom_html2);
-    wm.addParameter(&custom_html3);
-    wm.addParameter(&custom_server);
     wm.addParameter(&custom_name);
-    wm.addParameter(&custom_backup);
-    
-    // Configuration
-    wm.setConfigPortalTimeout(300); // 5 minutes timeout
+
+    wm.setConfigPortalTimeout(300);
     wm.setAPStaticIPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0));
-    
+
     String apName = "PhycoSense-" + g_deviceId;
-    
-    // Start captive portal
+
     if (!wm.autoConnect(apName.c_str(), "phyco123")) {
-        Serial.println("✗ Provisioning timed out - restarting...");
+        Serial.println("Provisioning timed out - restarting...");
         delay(3000);
         ESP.restart();
     }
-    
-    // WiFi connected! Now get custom parameters
-    g_serverUrl = custom_server.getValue();
+
+    // WiFi connected — use device name, hardcode server URL
     g_deviceName = custom_name.getValue();
-    g_backupServerUrl = custom_backup.getValue();
-    
-    // Set default values if empty
-    if (g_serverUrl.length() == 0) {
-        g_serverUrl = "http://192.168.100.7:5000/api/sensor-data";
-        Serial.println("⚠ No server URL provided, using default");
-    }
-    if (g_deviceName.length() == 0) {
-        g_deviceName = g_deviceId;
-    }
-    
-    // Append /sensor-data if not present
-    if (!g_serverUrl.endsWith("/sensor-data") && !g_serverUrl.endsWith("/sensor-data/")) {
-        if (!g_serverUrl.endsWith("/")) g_serverUrl += "/";
-        g_serverUrl += "sensor-data";
-    }
-    
-    // Save configuration
-    saveConfiguration(g_serverUrl, g_deviceName, g_backupServerUrl);
-    
-    Serial.println("\n✓ Provisioning Complete!");
-    Serial.print("   Device Name: ");
-    Serial.println(g_deviceName);
-    Serial.print("   Server URL: ");
-    Serial.println(g_serverUrl);
-    if (g_backupServerUrl.length() > 0) {
-        Serial.print("   Backup URL: ");
-        Serial.println(g_backupServerUrl);
-    }
-    Serial.println();
-    
+    if (g_deviceName.length() == 0) g_deviceName = g_deviceId;
+    g_serverUrl = PRODUCTION_SERVER;
+
+    saveConfiguration(g_serverUrl, g_deviceName);
+
+    Serial.println("\n✓ Provisioning complete!");
+    Serial.print("   Device Name: "); Serial.println(g_deviceName);
+    Serial.print("   Server URL:  "); Serial.println(g_serverUrl);
+
     isProvisioned = true;
 }
 
@@ -232,7 +214,7 @@ void checkProvisionButton() {
     }
 }
 
-// Register device with backend
+// Register device with backend and get access key
 bool registerDevice() {
     if (WiFi.status() != WL_CONNECTED) {
         return false;
@@ -241,33 +223,68 @@ bool registerDevice() {
     HTTPClient http;
     StaticJsonDocument<256> doc;
     
-    // Extract base URL for registration endpoint
+    // Use the auth registration endpoint
     String baseUrl = g_serverUrl;
-    baseUrl.replace("/sensor-data", "/devices/register");
+    // Remove /sensor-data to get base API URL, then add auth endpoint
+    baseUrl.replace("/sensor-data", "");
+    if (!baseUrl.endsWith("/")) baseUrl += "/";
+    String registerUrl = baseUrl + "auth/register-device";
     
     doc["deviceId"] = g_deviceId;
     doc["deviceName"] = g_deviceName;
-    doc["macAddress"] = WiFi.macAddress();
-    doc["firmwareVersion"] = "1.1.0-TEST";
-    doc["ipAddress"] = WiFi.localIP().toString();
     
     String jsonString;
     serializeJson(doc, jsonString);
     
-    Serial.print("Registering device with backend: ");
-    Serial.println(baseUrl);
+    Serial.print("Registering device: ");
+    Serial.println(registerUrl);
     
-    http.begin(baseUrl);
+    http.begin(registerUrl);
     http.addHeader("Content-Type", "application/json");
     http.setTimeout(10000);
     
     int httpResponseCode = http.POST(jsonString);
     
     if (httpResponseCode > 0) {
-        Serial.print("✓ Device registered! Response: ");
-        Serial.println(httpResponseCode);
         String response = http.getString();
+        Serial.print("✓ Registration response (" + String(httpResponseCode) + "): ");
         Serial.println(response);
+        
+        // Parse response to get access key
+        StaticJsonDocument<512> resDoc;
+        DeserializationError error = deserializeJson(resDoc, response);
+        
+        if (!error && resDoc.containsKey("accessKey")) {
+            g_accessKey = resDoc["accessKey"].as<String>();
+            
+            // Save the access key to flash
+            preferences.begin("phycosense", false);
+            preferences.putString("accessKey", g_accessKey);
+            preferences.end();
+            
+            Serial.println("\n╔════════════════════════════════════════╗");
+            Serial.println("║      YOUR DASHBOARD ACCESS KEY         ║");
+            Serial.println("╠════════════════════════════════════════╣");
+            Serial.print("║      ");
+            Serial.print(g_accessKey);
+            Serial.println("            ║");
+            Serial.println("╠════════════════════════════════════════╣");
+            Serial.println("║  Go to phycosense.app and enter this   ║");
+            Serial.println("║  key to view your device's dashboard   ║");
+            Serial.println("╚════════════════════════════════════════╝\n");
+            
+            // Re-open hotspot so customer can retrieve key at 192.168.4.1
+            startKeyPortal();
+        } else if (httpResponseCode == 409) {
+            // Device already registered - key was already given
+            Serial.println("Device already registered.");
+            if (g_accessKey.length() > 0) {
+                Serial.print("Saved access key: ");
+                Serial.println(g_accessKey);
+                startKeyPortal();
+            }
+        }
+        
         http.end();
         return true;
     } else {
@@ -276,6 +293,73 @@ bool registerDevice() {
         http.end();
         return false;
     }
+}
+
+// Open AP hotspot and serve the access key at 192.168.4.1
+// Customer reconnects to PhycoSense-XXXX hotspot and opens 192.168.4.1
+void startKeyPortal() {
+    if (keyPortalRunning) return;
+
+    // Enable AP alongside STA (dual mode — device keeps sending data)
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.softAPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0));
+    String apName = "PhycoSense-" + g_deviceId;
+    WiFi.softAP(apName.c_str(), "phyco123");
+
+    keyServer.on("/", HTTP_GET, []() {
+        String html = "<!DOCTYPE html><html><head>";
+        html += "<meta name='viewport' content='width=device-width,initial-scale=1'>";
+        html += "<meta charset='UTF-8'>";
+        html += "<title>PhycoSense - Your Access Key</title>";
+        html += "<style>";
+        html += "*{box-sizing:border-box;margin:0;padding:0}";
+        html += "body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#fff;";
+        html += "min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}";
+        html += ".card{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);";
+        html += "border-radius:20px;padding:36px 28px;max-width:380px;width:100%;text-align:center}";
+        html += ".check{font-size:3rem;margin-bottom:12px}";
+        html += ".title{color:#4dd0e1;font-size:1.6rem;font-weight:700;margin-bottom:6px}";
+        html += ".sub{color:#78909c;font-size:0.95rem;margin-bottom:28px}";
+        html += ".key-box{background:rgba(77,208,225,0.1);border:2px solid rgba(77,208,225,0.4);";
+        html += "border-radius:14px;padding:22px 16px;margin-bottom:24px}";
+        html += ".key-label{color:#78909c;font-size:0.8rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}";
+        html += ".key{font-size:2rem;font-weight:700;color:#4dd0e1;letter-spacing:4px;font-family:monospace}";
+        html += ".copy-btn{background:#4dd0e1;color:#0a1929;border:none;border-radius:10px;";
+        html += "padding:10px 24px;font-size:0.95rem;font-weight:600;cursor:pointer;margin-top:12px;width:100%}";
+        html += ".steps{background:rgba(255,255,255,0.04);border-radius:12px;padding:18px;text-align:left}";
+        html += ".steps p{color:#b0bec5;font-size:0.9rem;line-height:1.8;margin:0}";
+        html += ".steps b{color:#4dd0e1}";
+        html += ".device{color:#37474f;font-size:0.75rem;margin-top:20px}";
+        html += "</style></head><body><div class='card'>";
+        html += "<div class='check'>&#10003;</div>";
+        html += "<div class='title'>Setup Complete!</div>";
+        html += "<div class='sub'>Your PhycoSense device is now connected</div>";
+        html += "<div class='key-box'>";
+        html += "<div class='key-label'>Dashboard Access Key</div>";
+        html += "<div class='key' id='key'>" + g_accessKey + "</div>";
+        html += "<button class='copy-btn' onclick='navigator.clipboard.writeText(\"" + g_accessKey + "\").then(()=>{this.textContent=\"Copied!\";setTimeout(()=>{this.textContent=\"Copy Key\"},2000)})'>Copy Key</button>";
+        html += "</div>";
+        html += "<div class='steps'><p>";
+        html += "<b>1.</b> Write down or copy the key above<br>";
+        html += "<b>2.</b> Reconnect your phone to your home WiFi<br>";
+        html += "<b>3.</b> Open <b>phycosense.app</b> in your browser<br>";
+        html += "<b>4.</b> Enter the key to view your pond dashboard";
+        html += "</p></div>";
+        html += "<div class='device'>Device: " + g_deviceName + " (" + g_deviceId + ")</div>";
+        html += "</div></body></html>";
+        keyServer.send(200, "text/html", html);
+    });
+
+    keyServer.begin();
+    keyPortalRunning = true;
+    keyPortalStartTime = millis();
+
+    Serial.println("\n✓ Key portal started!");
+    Serial.print("  Reconnect to hotspot: PhycoSense-");
+    Serial.println(g_deviceId);
+    Serial.println("  Password: phyco123");
+    Serial.println("  Then open 192.168.4.1 in your browser");
+    Serial.println("  (Portal stays open for 10 minutes)\n");
 }
 
 // Read Serial Command
@@ -472,11 +556,17 @@ void setup()
     // Connect to WiFi (if provisioned)
     if (isProvisioned) {
         connectWiFi();
+        
+        // If we have a saved access key, re-open hotspot so customer can retrieve key
+        if (g_accessKey.length() > 0) {
+            startKeyPortal();
+        }
     }
     
     Serial.println(F("\n=== Commands ==="));
     Serial.println(F("  RESET  - Factory reset device"));
     Serial.println(F("  STATUS - Show device info"));
+    Serial.println(F("  KEY    - Show dashboard access key"));
     Serial.println(F("  ⚠ Or hold BOOT button for 5 seconds\n"));
     
     Serial.println(F("Starting data transmission (every 5 seconds)..."));
@@ -536,7 +626,26 @@ void loop()
                 Serial.print(batteryPercentage);
                 Serial.println("%)");
             }
+            if (g_accessKey.length() > 0) {
+                Serial.print("Access Key:     ");
+                Serial.println(g_accessKey);
+                Serial.print("Key Portal:     ");
+                Serial.println(keyPortalRunning ? "Open at 192.168.4.1 (reconnect to PhycoSense-" + g_deviceId + ")" : "Closed");
+            }
             Serial.println(F("══════════════════════════════════════\n"));
+        }
+        else if (cmdStr == "KEY") {
+            if (g_accessKey.length() > 0) {
+                Serial.println("\n╔════════════════════════════════════════╗");
+                Serial.println("║      YOUR DASHBOARD ACCESS KEY         ║");
+                Serial.println("╠════════════════════════════════════════╣");
+                Serial.print("║      ");
+                Serial.print(g_accessKey);
+                Serial.println("            ║");
+                Serial.println("╚════════════════════════════════════════╝\n");
+            } else {
+                Serial.println("\n⚠ No access key yet. Device must be registered with the server first.");
+            }
         }
     }
     
@@ -574,4 +683,16 @@ void loop()
     }
     
     delay(100); // Small delay to prevent watchdog issues
+
+    // Handle key portal (AP hotspot at 192.168.4.1)
+    if (keyPortalRunning) {
+        keyServer.handleClient();
+        // Auto-disable AP after 10 minutes
+        if (millis() - keyPortalStartTime > KEY_PORTAL_DURATION) {
+            WiFi.softAPdisconnect(true);
+            WiFi.mode(WIFI_STA);
+            keyPortalRunning = false;
+            Serial.println("Key portal closed. Device operating normally.");
+        }
+    }
 }

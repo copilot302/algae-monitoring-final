@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import LandingPage from './components/LandingPage';
 import Header from './components/Header';
 import DeviceSelector from './components/DeviceSelector';
 import ParameterCard from './components/ParameterCard';
@@ -11,10 +12,29 @@ import { exportDataByDateRange } from './utils/dataExport';
 import './styles/App.css';
 
 const App = () => {
+  const [authenticatedDevices, setAuthenticatedDevices] = useState(null);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const { sensorData, dataHistory, isConnected, mlPrediction } = useSensorData(selectedDevice);
   const { riskLevels, overallRisk } = useRiskAssessment(sensorData);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  const handleAuthenticated = (devices) => {
+    setAuthenticatedDevices(devices);
+    if (devices.length > 0) {
+      setSelectedDevice(devices[0].deviceId);
+    }
+  };
+
+  const handleLogout = () => {
+    setAuthenticatedDevices(null);
+    setSelectedDevice(null);
+    localStorage.removeItem('phycosense_keys');
+  };
+
+  // If not authenticated, show landing page
+  if (!authenticatedDevices) {
+    return <LandingPage onAuthenticated={handleAuthenticated} />;
+  }
 
   // Note: Data logging removed - ESP32 sends data directly to backend
   // Frontend only displays data, doesn't generate it
@@ -38,6 +58,7 @@ const App = () => {
         <DeviceSelector
           selectedDevice={selectedDevice}
           onDeviceChange={setSelectedDevice}
+          allowedDevices={authenticatedDevices}
         />
         
         <main className="dashboard">
@@ -117,7 +138,7 @@ const App = () => {
           </div>
         </main>
         
-        <Footer onExportData={handleExportData} />
+        <Footer onExportData={handleExportData} onLogout={handleLogout} />
         
         <DateRangeDialog
           isOpen={isExportModalOpen}

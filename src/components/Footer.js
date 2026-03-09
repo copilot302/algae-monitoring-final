@@ -1,7 +1,7 @@
 import React from 'react';
-import Icon from './Icon';
+import { Download, Settings, LogOut } from 'lucide-react';
 
-const Footer = ({ onExportData }) => {
+const Footer = ({ onExportData, onLogout }) => {
   const handleSettingsClick = () => {
     alert('Settings panel would open here in a full implementation');
   };
@@ -11,13 +11,19 @@ const Footer = ({ onExportData }) => {
       <div className="footer-content">
         <div className="export-controls">
           <button className="btn-export" onClick={onExportData}>
-            <Icon name="download" size={16} />
+            <Download size={16} />
             Export Data
           </button>
           <button className="btn-settings" onClick={handleSettingsClick}>
-            <Icon name="settings" size={16} />
+            <Settings size={16} />
             Settings
           </button>
+          {onLogout && (
+            <button className="btn-settings" onClick={onLogout} title="Sign out">
+              <LogOut size={16} />
+              Sign Out
+            </button>
+          )}
         </div>
         <div className="footer-info">
           <p>&copy; 2025 PhycoSense - Algae Monitoring System</p>
