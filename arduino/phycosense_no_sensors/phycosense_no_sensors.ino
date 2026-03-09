@@ -290,12 +290,19 @@ bool registerDevice() {
             // Re-open hotspot so customer can retrieve key at 192.168.4.1
             startKeyPortal();
         } else if (httpResponseCode == 409) {
-            // Device already registered - key was already given
-            Serial.println("Device already registered.");
-            if (g_accessKey.length() > 0) {
-                Serial.print("Saved access key: ");
+            // Device already registered — server returns the key so a re-flashed device can recover it
+            Serial.println("Device already registered - recovering key from server.");
+            StaticJsonDocument<512> resDoc409;
+            if (!deserializeJson(resDoc409, response) && resDoc409.containsKey("accessKey")) {
+                g_accessKey = resDoc409["accessKey"].as<String>();
+                preferences.begin("phycosense", false);
+                preferences.putString("accessKey", g_accessKey);
+                preferences.end();
+                Serial.print("Recovered access key: ");
                 Serial.println(g_accessKey);
-                startKeyPortal();
+            } else if (g_accessKey.length() > 0) {
+                Serial.print("Using stored key: ");
+                Serial.println(g_accessKey);
             }
         }
         

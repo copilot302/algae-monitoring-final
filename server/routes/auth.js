@@ -74,10 +74,14 @@ router.post('/register-device', async (req, res) => {
       return res.status(400).json({ message: 'deviceId is required' });
     }
 
-    // Check if device already registered
+    // Check if device already registered — return the key so a re-flashed device can recover it
     const existing = await Device.findOne({ deviceId });
     if (existing) {
-      return res.status(409).json({ message: 'Device already registered', deviceId });
+      return res.status(409).json({
+        message: 'Device already registered',
+        deviceId,
+        accessKey: existing.accessKey  // allow device to recover key after re-flash
+      });
     }
 
     const accessKey = Device.generateAccessKey();
