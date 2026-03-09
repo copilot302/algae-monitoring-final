@@ -153,7 +153,7 @@ void startProvisioningMode() {
     Serial.println("\n=== PROVISIONING MODE ===");
     Serial.print("Connect to hotspot: PhycoSense-");
     Serial.println(g_deviceId);
-    Serial.println("Password: phyco123");
+    Serial.println("No password - open network");
     Serial.println("Portal will open automatically.\n");
 
     WiFiManager wm;
@@ -180,7 +180,7 @@ void startProvisioningMode() {
 
     String apName = "PhycoSense-" + g_deviceId;
 
-    if (!wm.autoConnect(apName.c_str(), "phyco123")) {
+    if (!wm.autoConnect(apName.c_str())) {  // Open network — no password
         Serial.println("Provisioning timed out - restarting...");
         delay(3000);
         ESP.restart();
@@ -325,7 +325,7 @@ void startKeyPortal() {
     delay(100);
     WiFi.softAPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0));
     String apName = "PhycoSense-" + g_deviceId;
-    WiFi.softAP(apName.c_str(), "phyco123");
+    WiFi.softAP(apName.c_str());  // Open network — no password
     delay(200);
     // Re-establish STA connection after mode switch so outgoing HTTPS still works
     WiFi.begin();
@@ -413,7 +413,7 @@ void startKeyPortal() {
     Serial.println("\n✓ Key portal started!");
     Serial.print("  Reconnect to hotspot: PhycoSense-");
     Serial.println(g_deviceId);
-    Serial.println("  Password: phyco123");
+    Serial.println("  (No password - open network)");
     Serial.println("  Then open 192.168.4.1 in your browser");
     Serial.println("  (Portal stays open for 10 minutes)\n");
 }
