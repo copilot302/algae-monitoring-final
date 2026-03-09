@@ -9,7 +9,6 @@
 #include <ArduinoJson.h>
 #include <WiFiManager.h>  // https://github.com/tzapu/WiFiManager
 #include <Preferences.h>
-#include "lwip/dns.h"   // for explicit DNS fix in AP+STA mode
 
 // --- WiFi Provisioning Configuration ---
 Preferences preferences;
@@ -200,11 +199,20 @@ void startProvisioningMode() {
 
     isProvisioned = true;
 
-    // WiFiManager already connected us — register immediately while connection is fresh
+    // Retry registration in pure STA mode (before AP opens, so HTTPS works reliably)
     Serial.println("Registering device with server...");
-    registerDevice();
+    for (int attempt = 1; attempt <= 8 && g_accessKey.length() == 0; attempt++) {
+        g_regAttemptCount = attempt;
+        g_lastRegError = "Attempt " + String(attempt) + " of 8 - connecting...";
+        Serial.printf("  Registration attempt %d/8\n", attempt);
+        registerDevice();
+        if (g_accessKey.length() == 0 && attempt < 8) {
+            Serial.println("  Waiting 5s before retry...");
+            delay(5000);
+        }
+    }
 
-    // Always open the key portal so customer can reconnect and see their key
+    // Open AP to show key page (AP-only, no internet needed - key already saved)
     startKeyPortal();
 }
 
@@ -325,20 +333,20 @@ bool registerDevice() {
 void startKeyPortal() {
     if (keyPortalRunning) return;
 
-    // Enable AP alongside STA (dual mode — device keeps sending data)
-    WiFi.mode(WIFI_AP_STA);
+    if (g_accessKey.length() > 0) {
+        // Key already known: use AP+STA so device can keep sending data while page is visible
+        WiFi.mode(WIFI_AP_STA);
+    } else {
+        // Key not yet received: disconnect STA so AP has full radio attention
+        // (AP+STA mode blocks HTTPS; all registration attempts already used STA above)
+        WiFi.disconnect(true);
+        delay(200);
+        WiFi.mode(WIFI_AP);
+    }
+
     WiFi.softAPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0));
     String apName = "PhycoSense-" + g_deviceId;
     WiFi.softAP(apName.c_str(), "phyco123");
-
-    // AP+STA mode can break DNS resolution — force Google DNS on the STA interface
-    delay(200);
-    ip_addr_t dnsServer;
-    IP4_ADDR(&dnsServer.u_addr.ip4, 8, 8, 8, 8);
-    dns_setserver(0, &dnsServer);
-    IP4_ADDR(&dnsServer.u_addr.ip4, 8, 8, 4, 4);
-    dns_setserver(1, &dnsServer);
-    Serial.println("DNS set to 8.8.8.8 for AP+STA mode");
 
     keyServer.on("/", HTTP_GET, []() {
         String html = "<!DOCTYPE html><html><head>";
@@ -609,9 +617,19 @@ void setup()
     // Connect to WiFi (if provisioned)
     // Skip if we just provisioned — WiFiManager already connected us and startKeyPortal() is running
     if (isProvisioned && !justProvisioned) {
-        connectWiFi();
+        connectWiFi(); // pure STA mode
 
-        // Re-open the key portal on every reboot so customer can always retrieve their key
+        // Recover key via 409 if it was lost (e.g. re-flash without erase)
+        if (g_accessKey.length() == 0) {
+            Serial.println("No saved key — trying to recover from server...");
+            for (int attempt = 1; attempt <= 5 && g_accessKey.length() == 0; attempt++) {
+                g_regAttemptCount = attempt;
+                registerDevice();
+                if (g_accessKey.length() == 0 && attempt < 5) delay(5000);
+            }
+        }
+
+        // Open key portal (AP+STA since key is known, or AP-only if still missing)
         startKeyPortal();
     }
     
@@ -740,24 +758,13 @@ void loop()
     if (keyPortalRunning) {
         keyServer.handleClient();
 
-        // Retry registration if key not yet received
-        if (g_accessKey.length() == 0 && WiFi.status() == WL_CONNECTED) {
-            if (millis() - lastRegistrationAttempt > REGISTRATION_RETRY_INTERVAL) {
-                lastRegistrationAttempt = millis();
-                g_regAttemptCount++;
-                Serial.print("Retrying device registration (attempt ");
-                Serial.print(g_regAttemptCount);
-                Serial.println(")");
-                registerDevice();
-            }
-        }
-
-        // Auto-disable AP after 10 minutes
+        // Auto-disable AP after 10 minutes, then reconnect WiFi for normal operation
         if (millis() - keyPortalStartTime > KEY_PORTAL_DURATION) {
+            keyServer.close();
             WiFi.softAPdisconnect(true);
-            WiFi.mode(WIFI_STA);
             keyPortalRunning = false;
-            Serial.println("Key portal closed. Device operating normally.");
+            Serial.println("Key portal closed. Reconnecting to WiFi...");
+            connectWiFi();
         }
     }
 }
