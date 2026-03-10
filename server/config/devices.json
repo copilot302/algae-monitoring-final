@@ -1,0 +1,5 @@
+{
+  "PHY-A3F2-KX91": { "deviceId": "TANK-01", "deviceName": "Tank 1" },
+  "PHY-B7YQ-MN44": { "deviceId": "TANK-02", "deviceName": "Tank 2" },
+  "PHY-C5TR-PZ83": { "deviceId": "TANK-03", "deviceName": "Tank 3" }
+}

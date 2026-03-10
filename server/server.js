@@ -24,7 +24,7 @@ app.use('/api/sensor-data', sensorDataRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'PhycoSense API is running' });
+  res.json({ status: 'OK', message: 'PhycoSense API is running', version: '2.0.0', authEnabled: true });
 });
 
 // Error handling middleware
