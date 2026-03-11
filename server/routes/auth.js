@@ -65,7 +65,7 @@ router.post('/register-device', async (req, res) => {
   }
 
   try {
-    // If this deviceId is already registered, return its existing key (re-flash recovery)
+    // If this exact deviceId is already registered, return its existing key
     const existing = await Device.findOne({ deviceId });
     if (existing) {
       return res.status(409).json({
@@ -75,10 +75,28 @@ router.post('/register-device', async (req, res) => {
       });
     }
 
-    // Use the key the device pre-generated, or fall back to server-side generation
     let key;
-    if (clientKey && !(await Device.findOne({ accessKeyHash: hashKey(clientKey) }))) {
-      key = clientKey;
+    if (clientKey) {
+      const existingKeyOwner = await Device.findOne({ accessKeyHash: hashKey(clientKey) });
+
+      if (!existingKeyOwner) {
+        // Key is completely free — use it
+        key = clientKey;
+      } else {
+        // Key already exists under a different deviceId (e.g. seeded with placeholder).
+        // The device pre-generated this key so it rightfully owns it — update the record.
+        existingKeyOwner.deviceId = deviceId;
+        if (deviceName) existingKeyOwner.deviceName = deviceName;
+        await existingKeyOwner.save();
+
+        console.log(`Device claimed key: ${deviceId} → ${clientKey}`);
+        return res.status(200).json({
+          message: 'Device registered successfully',
+          deviceId,
+          deviceName: existingKeyOwner.deviceName,
+          accessKey: clientKey
+        });
+      }
     } else {
       let attempts = 0;
       do {
