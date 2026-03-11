@@ -96,6 +96,18 @@ void generateDeviceId() {
     g_deviceId.toUpperCase();
 }
 
+// Generate a PHY-XXXX-XXXX key using the hardware RNG
+// Called before the provisioning portal opens so the key is ready to show
+String generateAccessKeyLocal() {
+    const char chars[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 32 unambiguous chars
+    auto segment = [&](int len) -> String {
+        String s = "";
+        for (int i = 0; i < len; i++) s += chars[esp_random() % 32];
+        return s;
+    };
+    return "PHY-" + segment(4) + "-" + segment(4);
+}
+
 // Load saved configuration from flash memory
 bool loadConfiguration() {
     preferences.begin("phycosense", true); // Read-only
@@ -164,11 +176,14 @@ void startProvisioningMode() {
 
     String htmlContent =
         "<br/>"
-        "<div style='background:#e8f5e9;border-radius:8px;padding:14px;margin:10px 0;font-size:14px;color:#2e7d32'>"
-        "<b>PhycoSense Setup</b><br/>"
-        "Enter your WiFi password and give your device a name.<br/>"
-        "After saving, reconnect to <b>PhycoSense-" + g_deviceId + "</b> and open "
-        "<b>192.168.4.1</b> to get your dashboard access key."
+        "<div style='background:#e8f5e9;border-radius:8px;padding:16px;margin:10px 0;font-size:14px;color:#1a237e'>"
+        "<b>&#128273; Your Dashboard Access Key</b><br/>"
+        "<div style='background:#fff;border-radius:8px;padding:12px;margin:10px 0;text-align:center'>"
+        "<span style='font-size:1.5em;font-weight:700;color:#1565c0;letter-spacing:4px;font-family:monospace'>" + g_accessKey + "</span>"
+        "</div>"
+        "<b>Write this down before continuing!</b><br/>"
+        "You will need it to log in at <b>phycosense.app</b><br/>"
+        "<span style='font-size:0.85em;color:#555'>Then enter your WiFi password below and tap Save.</span>"
         "</div>";
     WiFiManagerParameter custom_html(htmlContent.c_str());
 
@@ -258,6 +273,7 @@ bool registerDevice() {
     
     doc["deviceId"] = g_deviceId;
     doc["deviceName"] = g_deviceName;
+    doc["accessKey"] = g_accessKey;  // Pre-generated on device; server stores it as-is
     
     String jsonString;
     serializeJson(doc, jsonString);
@@ -600,6 +616,17 @@ void setup()
 
     if (!isProvisioned) {
         Serial.println("⚠ No configuration found - entering provisioning mode\n");
+        // Generate access key NOW — before the portal opens — so it can be displayed
+        // to the user on the very first 192.168.4.1 page they see.
+        if (g_accessKey.length() == 0) {
+            g_accessKey = generateAccessKeyLocal();
+            // Persist immediately so the same key survives a reboot mid-provisioning
+            preferences.begin("phycosense", false);
+            preferences.putString("accessKey", g_accessKey);
+            preferences.end();
+            Serial.print("Pre-generated access key: ");
+            Serial.println(g_accessKey);
+        }
         startProvisioningMode(); // also calls registerDevice() + startKeyPortal() internally
         justProvisioned = true;
     } else {

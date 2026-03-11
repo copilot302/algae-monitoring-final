@@ -1,19 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
-const fs = require('fs');
 const crypto = require('crypto');
+const Device = require('../models/Device');
 
-// Load the pre-generated device key registry (like the printed code on a router/modem label)
-const devicesPath = path.join(__dirname, '../config/devices.json');
-
-const loadDevices = () => {
-  try {
-    return JSON.parse(fs.readFileSync(devicesPath, 'utf8'));
-  } catch {
-    return {};
-  }
-};
+const KEY_PATTERN = /^PHY-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/;
 
 // Generate a unique PHY-XXXX-XXXX key
 const generateKey = () => {
@@ -25,87 +15,102 @@ const generateKey = () => {
   return `PHY-${segment(4)}-${segment(4)}`;
 };
 
+const hashKey = (key) => crypto.createHash('sha256').update(key).digest('hex');
+
 // @route   POST /api/auth/verify-key
-// @desc    Verify a device access key printed in the device manual
+// @desc    Verify a device access key
 // @access  Public
-router.post('/verify-key', (req, res) => {
+router.post('/verify-key', async (req, res) => {
   const { accessKey } = req.body;
 
   if (!accessKey || typeof accessKey !== 'string') {
     return res.status(400).json({ message: 'Access key is required' });
   }
 
-  const devices = loadDevices();
   const key = accessKey.trim().toUpperCase();
-  const device = devices[key];
 
-  if (!device) {
-    return res.status(401).json({ message: 'Invalid access key' });
+  try {
+    const device = await Device.findOne({ accessKeyHash: hashKey(key) });
+
+    if (!device) {
+      return res.status(401).json({ message: 'Invalid access key' });
+    }
+
+    res.json({
+      authenticated: true,
+      deviceId: device.deviceId,
+      deviceName: device.deviceName
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
   }
-
-  res.json({
-    authenticated: true,
-    deviceId: device.deviceId,
-    deviceName: device.deviceName
-  });
 });
 
 // @route   POST /api/auth/register-device
-// @desc    Called by ESP32 during WiFi provisioning to get its unique access key.
-//          Generates a PHY-XXXX-XXXX key and saves it to devices.json.
-//          The key is shown on the device's hotspot portal (192.168.4.1) so the
-//          user can write it down — just like the printed code on a modem/router.
+// @desc    Called by ESP32 during WiFi provisioning to register its access key.
+//          The ESP32 pre-generates the key locally and shows it to the user on
+//          its setup portal (192.168.4.1) *before* WiFi credentials are entered,
+//          so the user writes it down in a single setup step.
+//          If no key is provided, the server generates one (backward compat).
 // @access  Public
-router.post('/register-device', (req, res) => {
-  const { deviceId, deviceName } = req.body;
+router.post('/register-device', async (req, res) => {
+  const { deviceId, deviceName, accessKey: clientKey } = req.body;
 
   if (!deviceId) {
     return res.status(400).json({ message: 'deviceId is required' });
   }
 
-  const devices = loadDevices();
-
-  // If this deviceId is already registered, return its existing key (re-flash recovery)
-  const existingEntry = Object.entries(devices).find(([, d]) => d.deviceId === deviceId);
-  if (existingEntry) {
-    return res.status(409).json({
-      message: 'Device already registered',
-      deviceId,
-      accessKey: existingEntry[0]
-    });
+  if (clientKey && !KEY_PATTERN.test(clientKey)) {
+    return res.status(400).json({ message: 'Invalid access key format' });
   }
-
-  // Generate a unique key that isn't already in use
-  let key;
-  do {
-    key = generateKey();
-  } while (devices[key]);
-
-  devices[key] = {
-    deviceId,
-    deviceName: deviceName || 'PhycoSense Device'
-  };
 
   try {
-    fs.writeFileSync(devicesPath, JSON.stringify(devices, null, 2));
-  } catch (err) {
-    console.error('Failed to save device:', err.message);
-    return res.status(500).json({ message: 'Failed to register device' });
-  }
+    // If this deviceId is already registered, return its existing key (re-flash recovery)
+    const existing = await Device.findOne({ deviceId });
+    if (existing) {
+      return res.status(409).json({
+        message: 'Device already registered',
+        deviceId,
+        accessKey: existing.accessKey
+      });
+    }
 
-  console.log(`Device registered: ${deviceId} → ${key}`);
-  res.status(201).json({
-    message: 'Device registered successfully',
-    deviceId,
-    deviceName: devices[key].deviceName,
-    accessKey: key
-  });
+    // Use the key the device pre-generated, or fall back to server-side generation
+    let key;
+    if (clientKey && !(await Device.findOne({ accessKeyHash: hashKey(clientKey) }))) {
+      key = clientKey;
+    } else {
+      let attempts = 0;
+      do {
+        key = generateKey();
+        if (++attempts > 20) throw new Error('Key generation failed');
+      } while (await Device.findOne({ accessKeyHash: hashKey(key) }));
+    }
+
+    const device = await Device.create({
+      deviceId,
+      deviceName: deviceName || 'PhycoSense Device',
+      accessKey: key,
+      accessKeyHash: hashKey(key)
+    });
+
+    console.log(`Device registered: ${deviceId} → ${key}`);
+    res.status(201).json({
+      message: 'Device registered successfully',
+      deviceId,
+      deviceName: device.deviceName,
+      accessKey: key
+    });
+  } catch (err) {
+    console.error('Registration error:', err.message);
+    res.status(500).json({ message: 'Failed to register device' });
+  }
 });
 
 // @route   POST /api/auth/verify-keys
 // @desc    Verify multiple saved access keys (for returning users)
 // @access  Public
-router.post('/verify-keys', (req, res) => {
+router.post('/verify-keys', async (req, res) => {
   const { accessKeys } = req.body;
 
   if (!Array.isArray(accessKeys) || accessKeys.length === 0) {
@@ -116,15 +121,17 @@ router.post('/verify-keys', (req, res) => {
     return res.status(400).json({ message: 'Too many keys (max 20)' });
   }
 
-  const devices = loadDevices();
-  const matched = accessKeys
-    .map(k => devices[k.trim().toUpperCase()])
-    .filter(Boolean);
+  try {
+    const hashes = accessKeys.map(k => hashKey(k.trim().toUpperCase()));
+    const devices = await Device.find({ accessKeyHash: { $in: hashes } });
 
-  res.json({
-    authenticated: matched.length > 0,
-    devices: matched
-  });
+    res.json({
+      authenticated: devices.length > 0,
+      devices: devices.map(d => ({ deviceId: d.deviceId, deviceName: d.deviceName }))
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 module.exports = router;
