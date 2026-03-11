@@ -17,7 +17,8 @@ const hashKey = (key) => crypto.createHash('sha256').update(key).digest('hex');
 
 // ── Add any manually registered keys here ──────────────────────────────────
 const EXTRA_KEYS = [
-  { key: 'PHY-GHMY-9D9T', deviceId: 'ESP32-PROVISIONED', deviceName: 'My PhycoSense Device' }
+  { key: 'PHY-GHMY-9D9T', deviceId: 'ESP32-PROVISIONED', deviceName: 'My PhycoSense Device' },
+  { key: 'PHY-C2HP-TK7T', deviceId: 'ESP32-PROVISIONED-2', deviceName: 'My PhycoSense Device' }
 ];
 // ───────────────────────────────────────────────────────────────────────────
 
