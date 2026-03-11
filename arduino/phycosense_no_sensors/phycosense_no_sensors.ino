@@ -41,18 +41,31 @@ String g_lastRegError = "Waiting...";
 // Production server URL (customer doesn't need to enter this)
 const String PRODUCTION_SERVER = "https://algae-monitoring-final-production.up.railway.app/api/sensor-data";
 
-// --- Battery Monitoring (Optional) ---
-#define BATTERY_PIN 35
+// --- Timing ---
+unsigned long lastSend = 0;
+const unsigned long sendInterval = 5000; // Send every 5 seconds
 const float VOLTAGE_DIVIDER_RATIO = 2.0;
 #define BATTERY_SAMPLES 10
 
+// --- Battery Monitoring (Optional) ---
+#define BATTERY_PIN 35
 float batteryVoltage = 0.0;
 int batteryPercentage = 0;
 bool isUSBPowered = false;
 
-// --- Timing ---
-unsigned long lastSend = 0;
-const unsigned long sendInterval = 5000; // Send every 5 seconds
+// --- Demo Scenario State ---
+// Phase 1 (0-15s):  Device out of water (air readings)
+// Phase 2 (15s+):   Device in high-risk bloom water (temp/turbidity/EC = HIGH RISK)
+unsigned long demoStartTime = 0;
+bool demoStarted = false;
+
+// High-risk bloom targets (after 15 seconds)
+// Temp    > 25°C  → HIGH (we use ~27.5°C)
+// Turbidity > 50 NTU → HIGH (we use ~70 NTU)
+// EC      > 1000 µS/cm → HIGH (we use ~1120 µS/cm)
+float bloomTemp    = 27.5;
+float bloomTurb    = 70.0;
+float bloomEC      = 1120.0;
 
 // Read Battery Voltage with averaging
 float readBatteryVoltage()
@@ -528,29 +541,63 @@ void sendDataToServer() {
         connectWiFi();
         return;
     }
-    
+
+    // --- Demo scenario timing ---
+    if (!demoStarted) {
+        demoStartTime = millis();
+        demoStarted = true;
+    }
+    unsigned long elapsed = millis() - demoStartTime;
+    bool inWater = (elapsed >= 15000);  // Phase 2 starts at 15 seconds
+
     HTTPClient http;
     StaticJsonDocument<256> doc;
-    
-    // Device identification
-    doc["deviceId"] = g_deviceId;
+
+    doc["deviceId"]   = g_deviceId;
     doc["deviceName"] = g_deviceName;
-    
-    // Mock sensor data (since no sensors connected)
-    doc["temperature"] = 25.0 + random(-5, 5) * 0.1;  // 24.5-25.5°C
-    doc["ph"] = 7.0 + random(-2, 2) * 0.1;            // 6.8-7.2 pH
-    doc["ec"] = 500 + random(-50, 50);                // 450-550 µS/cm
-    doc["turbidity"] = 5.0 + random(0, 10) * 0.1;     // 5.0-6.0 NTU
-    doc["dissolvedOxygen"] = 8.5 + random(-3, 3) * 0.1;  // 8.2-8.8 mg/L
-    
-    // Battery/Power data (real if battery connected)
-    doc["batteryVoltage"] = round(batteryVoltage * 100) / 100.0;
+
+    if (!inWater) {
+        // ── Phase 1: Out of water (0-15s) ────────────────────────────────
+        // Air readings: ambient temp, near-zero turbidity/EC, normal pH/DO
+        Serial.println("── PHASE 1: Device out of water ──");
+        doc["temperature"]     = 29.0 + random(-5, 5) * 0.1;   // ~28.5-29.5°C (air temp)
+        doc["turbidity"]       = 0.5  + random(0, 5)  * 0.1;   // ~0.5-1.0 NTU (air)
+        doc["ec"]              = 10   + random(-5, 5);          // ~5-15 µS/cm (air)
+        doc["ph"]              = 7.0  + random(-2, 2) * 0.1;   // normal, sensor not in water
+        doc["dissolvedOxygen"] = 7.8  + random(-3, 3) * 0.1;   // normal oxygen in air
+    } else {
+        // ── Phase 2: High-risk algae bloom water (15s+) ──────────────────
+        // Temp / Turbidity / EC  → HIGH RISK, drift minimally
+        // pH / DO                → normal mock (sensors not connected)
+        Serial.println("── PHASE 2: High-risk bloom water ──");
+
+        // Drift bloom values slightly each reading to look live
+        bloomTemp += (random(-2, 3) * 0.05f);   // ±0.1°C max per tick
+        bloomTurb += (random(-3, 4) * 0.2f);    // ±0.6 NTU max per tick
+        bloomEC   += (random(-4, 5) * 1.0f);    // ±4 µS/cm max per tick
+
+        // Clamp to keep firmly in HIGH-RISK zone
+        bloomTemp = constrain(bloomTemp, 26.5f, 28.5f);   // HIGH: > 25°C
+        bloomTurb = constrain(bloomTurb, 60.0f, 80.0f);   // HIGH: > 50 NTU
+        bloomEC   = constrain(bloomEC,  1050.0f, 1200.0f);// HIGH: > 1000 µS/cm
+
+        doc["temperature"]     = bloomTemp;
+        doc["turbidity"]       = bloomTurb;
+        doc["ec"]              = (int)bloomEC;
+
+        // pH and DO stay normal — sensors not connected to these parameters
+        doc["ph"]              = 7.8 + random(-2, 2) * 0.1;    // 7.6-8.0 (normal)
+        doc["dissolvedOxygen"] = 6.5 + random(-3, 3) * 0.1;   // 6.2-6.8 mg/L (normal)
+    }
+
+    // Battery / power data (real if battery connected)
+    doc["batteryVoltage"]    = round(batteryVoltage * 100) / 100.0;
     doc["batteryPercentage"] = batteryPercentage;
-    doc["isUSBPowered"] = isUSBPowered;
-    
+    doc["isUSBPowered"]      = isUSBPowered;
+
     String jsonString;
     serializeJson(doc, jsonString);
-    
+
     Serial.print(">> Sending JSON: ");
     Serial.println(jsonString);
     
