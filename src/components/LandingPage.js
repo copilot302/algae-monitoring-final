@@ -12,13 +12,20 @@ const LandingPage = ({ onAuthenticated }) => {
   const rawUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/sensor-data';
   const API_URL = rawUrl.replace(/\/sensor-data\/?$/, '');
 
-  // Load saved keys from localStorage
-  const getSavedKeys = () => {
+  // Saved keys as state so clearing them triggers a re-render
+  const loadSavedKeys = () => {
     try {
       return JSON.parse(localStorage.getItem('phycosense_keys') || '[]');
     } catch {
       return [];
     }
+  };
+  const [savedKeys, setSavedKeys] = useState(loadSavedKeys);
+
+  // Keep localStorage in sync helper
+  const persistKeys = (keys) => {
+    localStorage.setItem('phycosense_keys', JSON.stringify(keys));
+    setSavedKeys(keys);
   };
 
   const formatKeyInput = (value) => {
@@ -66,10 +73,8 @@ const LandingPage = ({ onAuthenticated }) => {
 
       if (response.ok && data.authenticated) {
         // Save key to localStorage
-        const savedKeys = getSavedKeys();
         if (!savedKeys.includes(trimmedKey)) {
-          savedKeys.push(trimmedKey);
-          localStorage.setItem('phycosense_keys', JSON.stringify(savedKeys));
+          persistKeys([...savedKeys, trimmedKey]);
         }
         onAuthenticated([{ deviceId: data.deviceId, deviceName: data.deviceName }]);
       } else {
@@ -82,7 +87,6 @@ const LandingPage = ({ onAuthenticated }) => {
     }
   };
 
-  const savedKeys = getSavedKeys();
   const hasSavedKeys = savedKeys.length > 0;
 
   const handleResumeSession = async () => {
@@ -120,6 +124,7 @@ const LandingPage = ({ onAuthenticated }) => {
 
   const handleClearSavedKeys = () => {
     localStorage.removeItem('phycosense_keys');
+    setSavedKeys([]);
     setShowAddKey(false);
     setError('');
   };
