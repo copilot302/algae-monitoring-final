@@ -1,6 +1,14 @@
 import * as XLSX from 'xlsx';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/sensor-data';
+const RAW_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/sensor-data';
+const normalizeSensorDataUrl = (url) => {
+  let base = (url || '').trim();
+  if (base.endsWith('/')) base = base.slice(0, -1);
+  if (base.endsWith('/sensor-data')) return base;
+  if (base.endsWith('/api')) return `${base}/sensor-data`;
+  return `${base}/api/sensor-data`;
+};
+const API_URL = normalizeSensorDataUrl(RAW_API_URL);
 
 // Export data with date range filter
 export const exportDataByDateRange = async ({ startDate, endDate, format = 'json' }) => {
