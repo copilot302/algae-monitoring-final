@@ -68,6 +68,21 @@ class PIDController:
 # Global PID controller instance
 pid_controller = PIDController(Kp=40.0, Ki=0.0, Kd=0.0, setpoint=5.0)
 
+@app.route('/', methods=['GET'])
+def index():
+    """Basic info endpoint for browser access"""
+    return jsonify({
+        'service': 'PhycoSense ML Service',
+        'status': 'running',
+        'endpoints': {
+            'health': '/health',
+            'predict': '/predict (POST)',
+            'retrain': '/retrain (POST)'
+        },
+        'model_loaded': rf_model is not None,
+        'encoder_loaded': label_encoder is not None
+    })
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""

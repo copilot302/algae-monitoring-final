@@ -10,8 +10,10 @@ const Header = ({ isConnected, overallRisk }) => {
         return 'Caution: Potential Algae Bloom Formation Detected';
       case 'high':
         return 'Alert: High Risk Bloom Conditions Present';
+      case 'unknown':
+        return 'ML Prediction Unavailable - Waiting for Model Output';
       default:
-        return 'System Monitoring Active';
+        return 'ML Prediction Unavailable';
     }
   };
 

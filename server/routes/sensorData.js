@@ -27,8 +27,11 @@ router.post('/', async (req, res) => {
         console.log(`ML Prediction: ${mlResponse.data.risk} (${(mlResponse.data.confidence * 100).toFixed(1)}%)`);
       }
     } catch (mlError) {
-      console.warn('ML service unavailable, saving data without prediction:', mlError.message);
-      // Continue saving data even if ML service is down
+      console.error('ML service unavailable. Rejecting sensor data in ML-only mode:', mlError.message);
+      return res.status(503).json({
+        message: 'ML prediction unavailable. Data rejected in ML-only mode.',
+        error: mlError.message
+      });
     }
     
     const newSensorData = new SensorData(sensorData);

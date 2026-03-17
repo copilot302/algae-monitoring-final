@@ -8,7 +8,6 @@ import Footer from './components/Footer';
 import DateRangeDialog from './components/dialogs/DateRangeDialog';
 import SettingsDialog from './components/dialogs/SettingsDialog';
 import { useSensorData } from './hooks/useSensorData';
-import { useRiskAssessment } from './hooks/useRiskAssessment';
 import { exportDataByDateRange } from './utils/dataExport';
 import './styles/App.css';
 
@@ -108,12 +107,12 @@ const App = () => {
     pollIntervalSeconds,
     historyLimit
   });
-  const { riskLevels, overallRisk } = useRiskAssessment(sensorData, settings.alerts);
 
   const mlOverallRisk = typeof mlPrediction?.risk === 'string'
     ? mlPrediction.risk.toLowerCase()
     : null;
-  const displayOverallRisk = mlOverallRisk || overallRisk;
+  const isMlDriven = Boolean(mlOverallRisk);
+  const displayOverallRisk = mlOverallRisk || 'unknown';
   const displayRiskLevels = mlOverallRisk
     ? {
         temperature: mlOverallRisk,
@@ -123,7 +122,14 @@ const App = () => {
         turbidity: mlOverallRisk,
         probioticLevel: mlOverallRisk
       }
-    : riskLevels;
+    : {
+        temperature: 'unknown',
+        dissolvedOxygen: 'unknown',
+        ph: 'unknown',
+        electricalConductivity: 'unknown',
+        turbidity: 'unknown',
+        probioticLevel: 'unknown'
+      };
 
   const handleAuthenticated = (devices) => {
     setAuthenticatedDevices(devices);
@@ -296,6 +302,7 @@ const App = () => {
               riskLevels={displayRiskLevels}
               sensorData={sensorData}
               mlPrediction={mlPrediction}
+              isMlDriven={isMlDriven}
             />
           </div>
         </main>

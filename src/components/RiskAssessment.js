@@ -1,16 +1,15 @@
 import React from 'react';
 import Icon from './Icon';
 
-const RiskAssessment = ({ overallRisk, riskLevels, sensorData, mlPrediction }) => {
+const RiskAssessment = ({ overallRisk, riskLevels, sensorData, mlPrediction, isMlDriven }) => {
   const getRiskLevelText = (risk) => {
-    // Support ML prediction format (Normal, Moderate, High)
     const normalizedRisk = typeof risk === 'string' ? risk.toLowerCase() : risk;
     
     switch (normalizedRisk) {
       case 'normal': return 'Normal';
       case 'moderate': return 'Early Bloom Formation';
       case 'high': return 'High Risk - Bloom Conditions';
-      default: return 'Normal';
+      default: return 'ML Unavailable';
     }
   };
 
@@ -21,7 +20,7 @@ const RiskAssessment = ({ overallRisk, riskLevels, sensorData, mlPrediction }) =
       case 'normal': return 'No immediate algae bloom risk detected. All parameters within normal ranges.';
       case 'moderate': return 'Moderate risk of algae bloom formation. Monitor conditions closely.';
       case 'high': return 'High probability of algae bloom conditions. Immediate action recommended.';
-      default: return 'System monitoring active.';
+      default: return 'No ML prediction received yet. Ensure backend can reach the ML service.';
     }
   };
 
@@ -67,7 +66,6 @@ const RiskAssessment = ({ overallRisk, riskLevels, sensorData, mlPrediction }) =
     { key: 'turbidity', name: 'Turbidity', value: sensorData.turbidity, unit: 'NTU' }
   ];
 
-  // Use ML prediction if available, otherwise fall back to rule-based
   const displayRisk = mlPrediction?.risk ? mlPrediction.risk.toLowerCase() : overallRisk;
 
   return (
@@ -86,6 +84,10 @@ const RiskAssessment = ({ overallRisk, riskLevels, sensorData, mlPrediction }) =
       
       <div className="card-content">
         <div className="overall-risk">
+          <div className="ml-confidence" style={{ marginBottom: 8 }}>
+            <Icon name="cpu" size={14} />
+            Risk Source: {isMlDriven ? 'Machine Learning (ML-only mode)' : 'No prediction available'}
+          </div>
           <div className={`risk-level ${displayRisk}`}>
             {getRiskLevelText(displayRisk)}
           </div>
@@ -105,17 +107,17 @@ const RiskAssessment = ({ overallRisk, riskLevels, sensorData, mlPrediction }) =
         
         <div className="risk-parameters">
           {parameters.map((param) => (
-            <div key={param.key} className={`risk-param ${riskLevels[param.key] || 'normal'}`}>
+            <div key={param.key} className={`risk-param ${riskLevels[param.key] || 'unknown'}`}>
               <div className="param-info">
                 <span className="param-name">{param.name}:</span>
                 <span className="param-value">
                   {param.value.toFixed(1)}{param.unit}
                 </span>
               </div>
-              <span className={`param-status ${riskLevels[param.key] || 'normal'}`}>
+              <span className={`param-status ${riskLevels[param.key] || 'unknown'}`}>
                 {riskLevels[param.key] === 'normal' ? 'Normal' : 
                  riskLevels[param.key] === 'moderate' ? 'Moderate' :
-                 riskLevels[param.key] === 'high' ? 'High Risk' : 'Normal'}
+                 riskLevels[param.key] === 'high' ? 'High Risk' : 'No ML'}
               </span>
             </div>
           ))}
