@@ -8,7 +8,7 @@ const normalizeSensorDataUrl = (url) => {
   if (base.endsWith('/api')) return `${base}/sensor-data`;
   return `${base}/api/sensor-data`;
 };
-const API_URL = normalizeSensorDataUrl(RAW_API_URL);
+const API_URL = normalizeSensorDataUrl(RAW_API_URL).trim();
 
 export const useSensorData = (deviceId, options = {}) => {
   const pollIntervalSeconds = Math.max(1, Number(options.pollIntervalSeconds) || 5);

@@ -8,17 +8,12 @@ const LandingPage = ({ onAuthenticated }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showAddKey, setShowAddKey] = useState(false);
 
-  // Derive base API URL (strip /sensor-data if present in env)
-  const rawUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/sensor-data';
-  const normalizeApiBase = (url) => {
-    let base = (url || '').trim();
-    if (base.endsWith('/')) base = base.slice(0, -1);
-    if (base.endsWith('/sensor-data')) {
-      base = base.slice(0, -'/sensor-data'.length);
-    }
-    return base;
-  };
-  const API_URL = normalizeApiBase(rawUrl);
+  // Derive base API URL (strip /api/sensor-data if present in env)
+  const rawUrl = (process.env.REACT_APP_API_URL || 'http://localhost:5000/api').trim();
+  const API_URL = rawUrl
+    .replace(/\/api\/sensor-data\/?$/, '/api')
+    .replace(/\/sensor-data\/?$/, '')
+    .replace(/\/$/, '');
 
   // Saved keys as state so clearing them triggers a re-render
   const loadSavedKeys = () => {
