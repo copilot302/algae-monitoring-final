@@ -169,6 +169,16 @@
   background-color: rgba(255, 255, 255, 0.2);
 }
 
+.btn-warning {
+  background: rgba(255, 193, 7, 0.16);
+  color: #fff2bf;
+  border: 1px solid rgba(255, 193, 7, 0.45);
+}
+
+.btn-warning:hover {
+  background: rgba(255, 193, 7, 0.28);
+}
+
 /* Settings Dialog */
 .settings-body {
   display: flex;

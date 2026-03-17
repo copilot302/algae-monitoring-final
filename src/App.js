@@ -302,6 +302,7 @@ const App = () => {
           onClose={() => setIsSettingsOpen(false)}
           onSave={handleSaveSettings}
           settings={settings}
+          defaultSettings={DEFAULT_SETTINGS}
           devices={authenticatedDevices}
           selectedDevice={selectedDevice}
         />

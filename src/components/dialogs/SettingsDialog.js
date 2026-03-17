@@ -6,6 +6,7 @@ const SettingsDialog = ({
   onClose,
   onSave,
   settings,
+  defaultSettings,
   devices,
   selectedDevice
 }) => {
@@ -83,6 +84,17 @@ const SettingsDialog = ({
 
   const handleSave = () => {
     onSave(draft);
+    onClose();
+  };
+
+  const handleResetToDefaults = () => {
+    const confirmed = window.confirm(
+      'Reset all settings to default values? This will restore the original thresholds and display preferences.'
+    );
+
+    if (!confirmed) return;
+
+    onSave(defaultSettings);
     onClose();
   };
 
@@ -425,6 +437,7 @@ const SettingsDialog = ({
         </div>
 
         <div className="modal-actions">
+          <button className="btn-warning" onClick={handleResetToDefaults}>Reset to defaults</button>
           <button className="btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn-primary" onClick={handleSave}>Save settings</button>
         </div>
