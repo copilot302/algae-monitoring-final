@@ -23,6 +23,8 @@ npm install
    - Copy `.env` file and update MongoDB connection string
    - For local MongoDB: `mongodb://localhost:27017/phycosense`
    - For MongoDB Atlas: Get connection string from your cluster
+  - Set `ML_SERVICE_URL` (local default: `http://localhost:5001`)
+  - Keep `ML_REQUIRED=false` unless you intentionally want hard-fail when ML is down
 
 ## Running the Server
 
@@ -65,6 +67,9 @@ Get sensor data with optional filters
 
 ### GET /api/sensor-data/latest
 Get the most recent sensor reading
+
+### GET /api/sensor-data/ml-health
+Check whether backend can reach the ML service
 
 ### GET /api/sensor-data/stats
 Get statistics for a time period
@@ -126,6 +131,9 @@ curl http://localhost:5000/api/sensor-data/latest
 
 # Get all data (limit 10)
 curl http://localhost:5000/api/sensor-data?limit=10
+
+# Check backend -> ML connectivity
+curl http://localhost:5000/api/sensor-data/ml-health
 ```
 
 ## Integration with Frontend

@@ -5,13 +5,25 @@ const axios = require('axios');
 
 // ML Service configuration
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5001';
+const ML_REQUIRED = (process.env.ML_REQUIRED || 'false').toLowerCase() === 'true';
+
+const getMlErrorMessage = (error) => {
+  if (!error) return 'Unknown ML error';
+  if (error.response?.data?.error) return error.response.data.error;
+  if (error.response?.status) return `ML service returned status ${error.response.status}`;
+  return error.message || 'Unknown ML error';
+};
 
 // @route   POST /api/sensor-data
 // @desc    Add new sensor reading with ML risk prediction
 // @access  Public
 router.post('/', async (req, res) => {
   try {
-    let sensorData = req.body;
+    const sensorData = req.body;
+    const responseMeta = {
+      mlStatus: 'unavailable',
+      mlRequired: ML_REQUIRED
+    };
     
     // Call ML service for risk prediction
     try {
@@ -23,20 +35,35 @@ router.post('/', async (req, res) => {
         sensorData.risk = mlResponse.data.risk;
         sensorData.riskConfidence = mlResponse.data.confidence;
         sensorData.action = mlResponse.data.action;
+        responseMeta.mlStatus = 'available';
         
         console.log(`ML Prediction: ${mlResponse.data.risk} (${(mlResponse.data.confidence * 100).toFixed(1)}%)`);
+      } else {
+        responseMeta.mlStatus = 'no-prediction';
       }
     } catch (mlError) {
-      console.error('ML service unavailable. Rejecting sensor data in ML-only mode:', mlError.message);
-      return res.status(503).json({
-        message: 'ML prediction unavailable. Data rejected in ML-only mode.',
-        error: mlError.message
-      });
+      const mlErrorMessage = getMlErrorMessage(mlError);
+      responseMeta.mlError = mlErrorMessage;
+
+      if (ML_REQUIRED) {
+        console.error('ML required and unavailable. Rejecting sensor data:', mlErrorMessage);
+        return res.status(503).json({
+          message: 'ML prediction unavailable. Data rejected because ML_REQUIRED=true.',
+          mlStatus: 'unavailable',
+          mlRequired: true,
+          error: mlErrorMessage
+        });
+      }
+
+      console.warn('ML service unavailable. Continuing without prediction:', mlErrorMessage);
     }
     
     const newSensorData = new SensorData(sensorData);
     const savedData = await newSensorData.save();
-    res.status(201).json(savedData);
+    res.status(201).json({
+      ...savedData.toObject(),
+      ...responseMeta
+    });
   } catch (error) {
     console.error('ERROR saving sensor data:', error.message);
     console.error('Data received:', JSON.stringify(req.body, null, 2));
@@ -96,6 +123,33 @@ router.get('/latest', async (req, res) => {
     res.json(latestData);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// @route   GET /api/sensor-data/ml-health
+// @desc    Check ML service availability from backend
+// @access  Public
+router.get('/ml-health', async (req, res) => {
+  try {
+    const mlResponse = await axios.get(`${ML_SERVICE_URL}/health`, {
+      timeout: 3000
+    });
+
+    return res.json({
+      status: 'available',
+      mlServiceUrl: ML_SERVICE_URL,
+      mlRequired: ML_REQUIRED,
+      ml: mlResponse.data
+    });
+  } catch (mlError) {
+    const mlErrorMessage = getMlErrorMessage(mlError);
+
+    return res.status(503).json({
+      status: 'unavailable',
+      mlServiceUrl: ML_SERVICE_URL,
+      mlRequired: ML_REQUIRED,
+      error: mlErrorMessage
+    });
   }
 });
 

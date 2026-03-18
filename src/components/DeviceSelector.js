@@ -39,9 +39,23 @@ const DeviceSelector = ({
       if (response.ok) {
         let data = await response.json();
         
-        // Filter to only show authenticated devices
+        // Keep all authenticated devices visible even if they have no telemetry yet.
         if (allowedIds) {
-          data = data.filter(d => allowedIds.includes(d.deviceId));
+          const byId = new Map(data.map((device) => [device.deviceId, device]));
+          data = allowedDevices.map((allowedDevice) => {
+            const existing = byId.get(allowedDevice.deviceId);
+            if (existing) return existing;
+
+            return {
+              deviceId: allowedDevice.deviceId,
+              deviceName: allowedDevice.deviceName || allowedDevice.deviceId,
+              status: 'offline',
+              lastUpdate: null,
+              batteryVoltage: null,
+              batteryPercentage: null,
+              isUSBPowered: false
+            };
+          });
         }
         
         const withAliases = data.map((device) => {
@@ -142,7 +156,9 @@ const DeviceSelector = ({
                       </span>
                     )}
                     <span className="last-update">
-                      {new Date(device.lastUpdate).toLocaleTimeString()}
+                      {device.lastUpdate
+                        ? new Date(device.lastUpdate).toLocaleTimeString()
+                        : 'No data yet'}
                     </span>
                   </div>
                 </div>
