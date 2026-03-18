@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhycoSense Dashboard Polish Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@500;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-1: #071421;
+      --bg-2: #081d29;
+      --surface: rgba(12, 31, 44, 0.72);
+      --surface-strong: rgba(9, 25, 36, 0.9);
+      --stroke: rgba(149, 218, 255, 0.22);
+      --text-1: #ecf8ff;
+      --text-2: #aad7ec;
+      --ok: #51d7a6;
+      --warn: #ffd065;
+      --danger: #ff7b7b;
+      --accent-a: #3ad8ff;
+      --accent-b: #37f0ba;
+      --shadow: 0 22px 65px rgba(0, 0, 0, 0.35);
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      color: var(--text-1);
+      background:
+        radial-gradient(circle at 12% 16%, rgba(58, 216, 255, 0.18), transparent 38%),
+        radial-gradient(circle at 88% 10%, rgba(55, 240, 186, 0.14), transparent 42%),
+        linear-gradient(160deg, var(--bg-1), var(--bg-2));
+      overflow-x: hidden;
+      padding: 26px;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    body::before {
+      background-image:
+        linear-gradient(rgba(110, 184, 220, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(110, 184, 220, 0.08) 1px, transparent 1px);
+      background-size: 36px 36px;
+      mask-image: radial-gradient(circle at 50% 40%, black 40%, transparent 90%);
+    }
+
+    body::after {
+      background: radial-gradient(circle at 50% 115%, rgba(58, 216, 255, 0.22), transparent 44%);
+    }
+
+    .shell {
+      max-width: 1240px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+      animation: rise 480ms ease-out both;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(130deg, var(--accent-a), var(--accent-b));
+      position: relative;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.26) inset;
+    }
+
+    .mark::after {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 9px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+    }
+
+    .brand h1 {
+      font-size: 1.14rem;
+      letter-spacing: 0.04em;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .brand p {
+      color: var(--text-2);
+      font-size: 0.82rem;
+      margin-top: 3px;
+      letter-spacing: 0.03em;
+    }
+
+    .live-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .chip {
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      padding: 8px 13px;
+      font-size: 0.8rem;
+      color: var(--text-2);
+      background: rgba(10, 32, 46, 0.65);
+    }
+
+    .chip strong {
+      color: var(--text-1);
+    }
+
+    .chip.live {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #cafbe9;
+      border-color: rgba(81, 215, 166, 0.5);
+      background: rgba(8, 52, 36, 0.5);
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--ok);
+      box-shadow: 0 0 0 0 rgba(81, 215, 166, 0.8);
+      animation: pulse 1.8s infinite;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .metric {
+      padding: 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--stroke);
+      background: linear-gradient(140deg, rgba(12, 33, 48, 0.9), rgba(7, 23, 34, 0.84));
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric::after {
+      content: "";
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      right: -86px;
+      top: -98px;
+      background: radial-gradient(circle, rgba(61, 180, 219, 0.25), transparent 72%);
+    }
+
+    .k {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .label {
+      color: var(--text-2);
+      font-size: 0.79rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-family: "Manrope", sans-serif;
+    }
+
+    .value {
+      font-size: 1.66rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .delta {
+      font-size: 0.76rem;
+      color: #96dac2;
+      border: 1px solid rgba(150, 218, 194, 0.45);
+      border-radius: 999px;
+      padding: 3px 8px;
+      background: rgba(26, 82, 59, 0.36);
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 14px;
+    }
+
+    .plot {
+      padding: 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--stroke);
+      background: linear-gradient(150deg, rgba(12, 32, 45, 0.94), rgba(9, 25, 37, 0.84));
+    }
+
+    .plot-head,
+    .side-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .plot-head h2,
+    .side-head h2 {
+      font-size: 1rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .plot canvas {
+      width: 100%;
+      height: 252px;
+      display: block;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(132, 195, 225, 0.2);
+      background: linear-gradient(180deg, rgba(7, 22, 33, 0.8), rgba(6, 18, 27, 0.92));
+    }
+
+    .risk-chart-wrap {
+      margin-top: 14px;
+      height: 180px;
+      border: 1px solid rgba(129, 194, 226, 0.22);
+      border-radius: 12px;
+      padding: 8px;
+      background: rgba(8, 25, 36, 0.72);
+    }
+
+    .risk-chart-wrap canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .side {
+      display: grid;
+      gap: 14px;
+    }
+
+    .risk,
+    .actions,
+    .devices {
+      padding: 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--stroke);
+      background: linear-gradient(150deg, rgba(12, 32, 45, 0.95), rgba(9, 24, 36, 0.86));
+    }
+
+    .risk-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 0.82rem;
+      margin-top: 6px;
+      border: 1px solid rgba(255, 208, 101, 0.5);
+      color: #ffe7af;
+      background: rgba(87, 56, 11, 0.48);
+    }
+
+    .risk p {
+      color: var(--text-2);
+      font-size: 0.9rem;
+      margin-top: 12px;
+      line-height: 1.42;
+    }
+
+    .stack {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid rgba(129, 194, 226, 0.24);
+      background: rgba(9, 27, 40, 0.74);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 0.86rem;
+    }
+
+    .row .name {
+      color: #c4e7f8;
+    }
+
+    .row strong {
+      font-weight: 600;
+      color: var(--text-1);
+    }
+
+    .actions .row strong.ok {
+      color: #94f2ca;
+    }
+
+    .actions .row strong.warn {
+      color: #ffe099;
+    }
+
+    .devices {
+      margin-top: 2px;
+    }
+
+    .device-grid {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .device {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      border-radius: 12px;
+      padding: 10px;
+      border: 1px solid rgba(129, 194, 226, 0.2);
+      background: rgba(10, 30, 44, 0.7);
+    }
+
+    .sig {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--ok);
+      box-shadow: 0 0 10px rgba(81, 215, 166, 0.62);
+    }
+
+    .device.offline .sig {
+      background: #7c9db2;
+      box-shadow: none;
+    }
+
+    .device h4 {
+      font-size: 0.9rem;
+      margin-bottom: 2px;
+    }
+
+    .device p {
+      color: var(--text-2);
+      font-size: 0.78rem;
+    }
+
+    .badge {
+      font-size: 0.74rem;
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      padding: 4px 8px;
+      color: var(--text-2);
+    }
+
+    .foot {
+      color: var(--text-2);
+      font-size: 0.78rem;
+      text-align: right;
+      padding: 4px 2px 2px;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(81, 215, 166, 0.75); }
+      70% { box-shadow: 0 0 0 10px rgba(81, 215, 166, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(81, 215, 166, 0); }
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 1080px) {
+      .metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      body {
+        padding: 14px;
+      }
+
+      .top {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .live-row {
+        justify-content: flex-start;
+      }
+
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .value {
+        font-size: 1.52rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="panel top">
+      <div class="brand">
+        <div class="mark" aria-hidden="true"></div>
+        <div>
+          <h1>PhycoSense Command Console</h1>
+          <p>Realtime algae risk intelligence for multi-tank operations</p>
+        </div>
+      </div>
+      <div class="live-row">
+        <span class="chip live"><span class="dot"></span> Stream Active</span>
+        <span class="chip"><strong>ML:</strong> Online</span>
+        <span class="chip"><strong>Device:</strong> TANK-01</span>
+        <span id="clock" class="chip"><strong>Updated:</strong> --:--:--</span>
+      </div>
+    </header>
+
+    <section class="metrics">
+      <article class="metric panel">
+        <span class="label">Temperature</span>
+        <div class="k">
+          <span class="value" id="temp">24.8 C</span>
+          <span class="delta">+0.3</span>
+        </div>
+      </article>
+      <article class="metric panel">
+        <span class="label">Dissolved Oxygen</span>
+        <div class="k">
+          <span class="value" id="do">5.4 mg/L</span>
+          <span class="delta">+0.1</span>
+        </div>
+      </article>
+      <article class="metric panel">
+        <span class="label">Turbidity</span>
+        <div class="k">
+          <span class="value" id="turb">13 NTU</span>
+          <span class="delta">-1.2</span>
+        </div>
+      </article>
+      <article class="metric panel">
+        <span class="label">Conductivity</span>
+        <div class="k">
+          <span class="value" id="ec">780 uS/cm</span>
+          <span class="delta">+14</span>
+        </div>
+      </article>
+    </section>
+
+    <section class="main">
+      <article class="plot panel">
+        <div class="plot-head">
+          <h2>24-Hour Oxygen Trend vs ML Risk Signal</h2>
+          <span class="chip">Window: 24h</span>
+        </div>
+        <canvas id="oxygenChart" role="img" aria-label="Trend preview"></canvas>
+      </article>
+
+      <aside class="side">
+        <article class="risk panel">
+          <div class="side-head">
+            <h2>Risk Assessment</h2>
+            <span class="chip">Confidence 89.4%</span>
+          </div>
+          <span class="risk-pill">Moderate bloom formation risk detected</span>
+          <p>
+            ML indicates a moderate risk pattern due to sustained turbidity drift and pH elevation.
+            Current recommendation is controlled aeration plus microdosing support.
+          </p>
+          <div class="risk-chart-wrap">
+            <canvas id="riskRadar" role="img" aria-label="Risk factor distribution"></canvas>
+          </div>
+          <div class="stack">
+            <div class="row"><span class="name">Risk Source</span><strong>Machine Learning</strong></div>
+            <div class="row"><span class="name">Last Prediction</span><strong>4 sec ago</strong></div>
+            <div class="row"><span class="name">Fallback Mode</span><strong>Disabled</strong></div>
+          </div>
+        </article>
+
+        <article class="actions panel">
+          <div class="side-head">
+            <h2>Actuator Plan</h2>
+            <span class="chip">PID Active</span>
+          </div>
+          <div class="stack">
+            <div class="row"><span class="name">Aerator PWM</span><strong class="ok">128</strong></div>
+            <div class="row"><span class="name">Valve State</span><strong class="warn">Microdosing</strong></div>
+            <div class="row"><span class="name">Target DO</span><strong>5.0 mg/L</strong></div>
+          </div>
+        </article>
+      </aside>
+    </section>
+
+    <section class="devices panel devices">
+      <div class="side-head">
+        <h2>Fleet Snapshot</h2>
+        <span class="chip">3 authenticated devices</span>
+      </div>
+      <div class="device-grid">
+        <article class="device">
+          <span class="sig" aria-hidden="true"></span>
+          <div>
+            <h4>Tank 1 - Nursery Pond</h4>
+            <p>TANK-01 | Last packet 4 sec ago</p>
+          </div>
+          <span class="badge">ONLINE</span>
+        </article>
+        <article class="device offline">
+          <span class="sig" aria-hidden="true"></span>
+          <div>
+            <h4>Tank 2 - Growout Pond</h4>
+            <p>TANK-02 | No data yet</p>
+          </div>
+          <span class="badge">OFFLINE</span>
+        </article>
+        <article class="device offline">
+          <span class="sig" aria-hidden="true"></span>
+          <div>
+            <h4>Tank 3 - Reserve Pond</h4>
+            <p>TANK-03 | No data yet</p>
+          </div>
+          <span class="badge">OFFLINE</span>
+        </article>
+      </div>
+    </section>
+
+    <p class="foot">Preview concept only. This file does not modify the current production dashboard.</p>
+  </div>
+
+  <script>
+    (function () {
+      const clockEl = document.getElementById('clock');
+      const tempEl = document.getElementById('temp');
+      const doEl = document.getElementById('do');
+      const turbEl = document.getElementById('turb');
+      const ecEl = document.getElementById('ec');
+      const oxygenCtx = document.getElementById('oxygenChart');
+      const riskCtx = document.getElementById('riskRadar');
+
+      const labels = ['-22h', '-20h', '-18h', '-16h', '-14h', '-12h', '-10h', '-8h', '-6h', '-4h', '-2h', 'Now'];
+      const oxygenData = [4.1, 4.3, 4.4, 4.2, 4.6, 4.9, 5.1, 5.0, 5.2, 5.4, 5.3, 5.4];
+      const riskData = [52, 55, 58, 62, 64, 66, 70, 72, 75, 78, 81, 84];
+
+      const oxygenChart = new Chart(oxygenCtx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Dissolved Oxygen',
+              data: oxygenData,
+              borderColor: '#3ad8ff',
+              backgroundColor: 'rgba(58, 216, 255, 0.2)',
+              borderWidth: 3,
+              pointRadius: 2,
+              pointHoverRadius: 4,
+              tension: 0.34,
+              fill: true
+            },
+            {
+              label: 'ML Risk Score',
+              data: riskData,
+              borderColor: '#37f0ba',
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.28,
+              borderDash: [6, 6],
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#d6eeff',
+                boxWidth: 14,
+                usePointStyle: true,
+                pointStyle: 'line'
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#96c8de' },
+              grid: { color: 'rgba(129, 194, 226, 0.16)' }
+            },
+            y: {
+              min: 2,
+              max: 8,
+              ticks: { color: '#96c8de' },
+              title: {
+                display: true,
+                text: 'DO mg/L',
+                color: '#b7def0'
+              },
+              grid: { color: 'rgba(129, 194, 226, 0.16)' }
+            },
+            y1: {
+              position: 'right',
+              min: 0,
+              max: 100,
+              ticks: { color: '#8fdcc2' },
+              title: {
+                display: true,
+                text: 'Risk %',
+                color: '#a9ead2'
+              },
+              grid: { drawOnChartArea: false }
+            }
+          }
+        }
+      });
+
+      const riskRadar = new Chart(riskCtx, {
+        type: 'radar',
+        data: {
+          labels: ['Temperature', 'DO', 'pH', 'EC', 'Turbidity'],
+          datasets: [
+            {
+              label: 'Current Stress Profile',
+              data: [58, 41, 64, 52, 68],
+              borderColor: '#ffd065',
+              backgroundColor: 'rgba(255, 208, 101, 0.22)',
+              borderWidth: 2,
+              pointBackgroundColor: '#ffd065',
+              pointRadius: 2
+            }
+          ]
+        },
+        options: {
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: {
+                color: '#f8dfad',
+                boxWidth: 14
+              }
+            }
+          },
+          scales: {
+            r: {
+              min: 0,
+              max: 100,
+              ticks: {
+                display: false,
+                stepSize: 20
+              },
+              grid: { color: 'rgba(129, 194, 226, 0.18)' },
+              angleLines: { color: 'rgba(129, 194, 226, 0.18)' },
+              pointLabels: { color: '#a9d0e4', font: { size: 10 } }
+            }
+          }
+        }
+      });
+
+      function formatTime(date) {
+        return date.toLocaleTimeString('en-US', { hour12: false });
+      }
+
+      function jitter(base, amplitude, decimals) {
+        const v = base + (Math.random() - 0.5) * amplitude;
+        return v.toFixed(decimals);
+      }
+
+      function updatePreviewData() {
+        clockEl.innerHTML = '<strong>Updated:</strong> ' + formatTime(new Date());
+        tempEl.textContent = jitter(24.8, 0.8, 1) + ' C';
+        doEl.textContent = jitter(5.4, 0.5, 1) + ' mg/L';
+        turbEl.textContent = Math.round(Number(jitter(13, 4.5, 1))) + ' NTU';
+        ecEl.textContent = Math.round(Number(jitter(780, 28, 1))) + ' uS/cm';
+
+        const nextDo = Number(jitter(5.4, 0.45, 2));
+        const nextRisk = Math.max(40, Math.min(95, Math.round(Number(jitter(74, 9, 1)))));
+        oxygenChart.data.datasets[0].data.push(nextDo);
+        oxygenChart.data.datasets[0].data.shift();
+        oxygenChart.data.datasets[1].data.push(nextRisk);
+        oxygenChart.data.datasets[1].data.shift();
+        oxygenChart.update('none');
+
+        riskRadar.data.datasets[0].data = [
+          Math.round(Number(jitter(58, 8, 1))),
+          Math.round(Number(jitter(41, 10, 1))),
+          Math.round(Number(jitter(64, 8, 1))),
+          Math.round(Number(jitter(52, 9, 1))),
+          Math.round(Number(jitter(68, 8, 1)))
+        ];
+        riskRadar.update('none');
+      }
+
+      updatePreviewData();
+      setInterval(updatePreviewData, 4000);
+    })();
+  </script>
+</body>
+</html>

@@ -33,12 +33,12 @@ const LineChart = ({ data, color = '#4dd0e1', unit = '' }) => {
         label: 'Value',
         data: data,
         borderColor: color,
-        backgroundColor: `${color}20`,
-        borderWidth: 2,
-        fill: true,
-        tension: 0.4,
+        backgroundColor: `${color}12`,
+        borderWidth: 1.8,
+        fill: false,
+        tension: 0.35,
         pointRadius: 0,
-        pointHoverRadius: 4,
+        pointHoverRadius: 3,
         pointBackgroundColor: color,
         pointBorderColor: color,
       },
@@ -53,13 +53,14 @@ const LineChart = ({ data, color = '#4dd0e1', unit = '' }) => {
         display: false,
       },
       tooltip: {
-        mode: 'index',
+        mode: 'nearest',
         intersect: false,
-        backgroundColor: 'rgba(26, 26, 46, 0.9)',
+        backgroundColor: 'rgba(20, 28, 36, 0.94)',
         titleColor: '#ffffff',
         bodyColor: '#ffffff',
-        borderColor: color,
+        borderColor: 'rgba(255, 255, 255, 0.16)',
         borderWidth: 1,
+        displayColors: false,
         callbacks: {
           label: function(context) {
             return `${context.parsed.y.toFixed(1)}${unit}`;
@@ -69,33 +70,17 @@ const LineChart = ({ data, color = '#4dd0e1', unit = '' }) => {
     },
     scales: {
       x: {
-        display: true,
+        display: false,
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)',
+          color: 'rgba(255, 255, 255, 0.06)',
           drawBorder: false,
-        },
-        ticks: {
-          color: '#90a4ae',
-          font: {
-            size: 10,
-          },
-          maxTicksLimit: 5,
         },
       },
       y: {
-        display: true,
+        display: false,
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)',
+          color: 'rgba(255, 255, 255, 0.06)',
           drawBorder: false,
-        },
-        ticks: {
-          color: '#90a4ae',
-          font: {
-            size: 10,
-          },
-          callback: function(value) {
-            return `${value.toFixed(1)}${unit}`;
-          }
         },
       },
     },
