@@ -15,21 +15,49 @@ ENCODER_PATH = os.path.join(os.path.dirname(__file__), 'label_encoder.joblib')
 
 rf_model = None
 label_encoder = None
+loaded_model_path = None
+loaded_encoder_path = None
+
+
+def _candidate_paths(filename):
+    candidates = [
+        os.path.join(os.path.dirname(__file__), filename),
+        os.path.join(os.getcwd(), filename),
+        os.path.join(os.getcwd(), 'ml-service', filename)
+    ]
+    unique = []
+    seen = set()
+    for candidate in candidates:
+        normalized = os.path.normpath(candidate)
+        if normalized not in seen:
+            seen.add(normalized)
+            unique.append(normalized)
+    return unique
 
 def load_models():
     """Load the trained RF model and label encoder"""
-    global rf_model, label_encoder
-    
-    if os.path.exists(MODEL_PATH) and os.path.exists(ENCODER_PATH):
-        rf_model = joblib.load(MODEL_PATH)
-        label_encoder = joblib.load(ENCODER_PATH)
-        print(f"✓ Models loaded successfully from {os.path.dirname(__file__)}")
+    global rf_model, label_encoder, loaded_model_path, loaded_encoder_path
+
+    model_path = next((p for p in _candidate_paths('rf_model.joblib') if os.path.exists(p)), None)
+    encoder_path = next((p for p in _candidate_paths('label_encoder.joblib') if os.path.exists(p)), None)
+
+    if model_path and encoder_path:
+        rf_model = joblib.load(model_path)
+        label_encoder = joblib.load(encoder_path)
+        loaded_model_path = model_path
+        loaded_encoder_path = encoder_path
+        print("✓ Models loaded successfully")
+        print(f"  Model: {loaded_model_path}")
+        print(f"  Encoder: {loaded_encoder_path}")
         return True
-    else:
-        print(f"⚠ Model files not found. Please train the model first.")
-        print(f"  Expected: {MODEL_PATH}")
-        print(f"  Expected: {ENCODER_PATH}")
-        return False
+
+    print("⚠ Model files not found. Please train the model first.")
+    print(f"  Checked model paths: {_candidate_paths('rf_model.joblib')}")
+    print(f"  Checked encoder paths: {_candidate_paths('label_encoder.joblib')}")
+    return False
+
+# Load models during module import so Gunicorn workers initialize correctly.
+load_models()
 
 # PID Controller for aerator control
 class PIDController:
@@ -80,7 +108,9 @@ def index():
             'retrain': '/retrain (POST)'
         },
         'model_loaded': rf_model is not None,
-        'encoder_loaded': label_encoder is not None
+        'encoder_loaded': label_encoder is not None,
+        'model_path': loaded_model_path,
+        'encoder_path': loaded_encoder_path
     })
 
 @app.route('/health', methods=['GET'])
@@ -89,7 +119,9 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'model_loaded': rf_model is not None,
-        'encoder_loaded': label_encoder is not None
+        'encoder_loaded': label_encoder is not None,
+        'model_path': loaded_model_path,
+        'encoder_path': loaded_encoder_path
     })
 
 @app.route('/predict', methods=['POST'])
