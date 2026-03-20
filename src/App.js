@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import LandingPage from './components/LandingPage';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
+import ActuatorsDashboard from './components/ActuatorsDashboard';
 import ParameterCard from './components/ParameterCard';
 import Footer from './components/Footer';
 import DateRangeDialog from './components/dialogs/DateRangeDialog';
@@ -94,6 +95,7 @@ const App = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [activePage, setActivePage] = useState('overview');
   const [showRiskDetails, setShowRiskDetails] = useState(false);
   const [settings, setSettings] = useState(loadSettings);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
@@ -382,92 +384,105 @@ const App = () => {
             onLogout={handleLogout}
             isCollapsed={isSidebarCollapsed}
             onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+            activePage={activePage}
+            onNavigatePage={setActivePage}
           />
 
-          <main className="dashboard">
-            <div className="parameter-grid">
-            {showSensors.temperature && (
-              <ParameterCard
-                title="Temperature"
-                icon="thermometer"
-                value={temperatureValue}
-                unit={temperatureUnit}
-                data={sliceHistory(dataHistory.temperature)}
-                riskLevel={displayRiskLevels.temperature}
-                type="chart"
-                thresholds={chartThresholds.temperature}
-              />
-            )}
-            
-            {showSensors.dissolvedOxygen && (
-              <ParameterCard
-                title="Dissolved Oxygen"
-                icon="droplets"
-                value={sensorData.dissolvedOxygen}
-                unit="mg/L"
-                data={sliceHistory(dataHistory.dissolvedOxygen)}
-                riskLevel={displayRiskLevels.dissolvedOxygen}
-                type="chart"
-                thresholds={chartThresholds.dissolvedOxygen}
-              />
-            )}
-            
-            {showSensors.ph && (
-              <ParameterCard
-                title="pH Level"
-                icon="flask"
-                value={sensorData.ph}
-                unit=""
-                data={sliceHistory(dataHistory.ph)}
-                riskLevel={displayRiskLevels.ph}
-                type="gauge"
-                min={0}
-                max={14}
-              />
-            )}
-            
-            {showSensors.electricalConductivity && (
-              <ParameterCard
-                title="Electrical Conductivity"
-                icon="zap"
-                value={sensorData.electricalConductivity}
-                unit="µS/cm"
-                data={sliceHistory(dataHistory.electricalConductivity)}
-                riskLevel={displayRiskLevels.electricalConductivity}
-                type="gauge"
-                min={0}
-                max={1200}
-              />
-            )}
-            
-            {showSensors.turbidity && (
-              <ParameterCard
-                title="Turbidity"
-                icon="eye"
-                value={sensorData.turbidity}
-                unit="NTU"
-                data={sliceHistory(dataHistory.turbidity)}
-                riskLevel={displayRiskLevels.turbidity}
-                type="chart"
-                thresholds={chartThresholds.turbidity}
-              />
-            )}
-            
-            {showSensors.probioticLevel && (
-              <ParameterCard
-                title="Probiotic Chamber"
-                icon="droplet"
-                value={sensorData.probioticLevel}
-                unit="%"
-                data={sliceHistory(dataHistory.probioticLevel)}
-                riskLevel={displayRiskLevels.probioticLevel}
-                type="tank"
-                min={0}
-                max={100}
-              />
-            )}
-            </div>
-          </main>
+          {activePage === 'actuators' ? (
+            <ActuatorsDashboard
+              lastAction={lastAction}
+              overallRisk={displayOverallRisk}
+              alertCount={alertCount}
+              mlServiceStatus={mlServiceStatus}
+              isConnected={isConnected}
+              latestPredictionConfidence={latestPredictionConfidence}
+            />
+          ) : (
+            <main className="dashboard">
+              <div className="parameter-grid">
+              {showSensors.temperature && (
+                <ParameterCard
+                  title="Temperature"
+                  icon="thermometer"
+                  value={temperatureValue}
+                  unit={temperatureUnit}
+                  data={sliceHistory(dataHistory.temperature)}
+                  riskLevel={displayRiskLevels.temperature}
+                  type="chart"
+                  thresholds={chartThresholds.temperature}
+                />
+              )}
+              
+              {showSensors.dissolvedOxygen && (
+                <ParameterCard
+                  title="Dissolved Oxygen"
+                  icon="droplets"
+                  value={sensorData.dissolvedOxygen}
+                  unit="mg/L"
+                  data={sliceHistory(dataHistory.dissolvedOxygen)}
+                  riskLevel={displayRiskLevels.dissolvedOxygen}
+                  type="chart"
+                  thresholds={chartThresholds.dissolvedOxygen}
+                />
+              )}
+              
+              {showSensors.ph && (
+                <ParameterCard
+                  title="pH Level"
+                  icon="flask"
+                  value={sensorData.ph}
+                  unit=""
+                  data={sliceHistory(dataHistory.ph)}
+                  riskLevel={displayRiskLevels.ph}
+                  type="gauge"
+                  min={0}
+                  max={14}
+                />
+              )}
+              
+              {showSensors.electricalConductivity && (
+                <ParameterCard
+                  title="Electrical Conductivity"
+                  icon="zap"
+                  value={sensorData.electricalConductivity}
+                  unit="µS/cm"
+                  data={sliceHistory(dataHistory.electricalConductivity)}
+                  riskLevel={displayRiskLevels.electricalConductivity}
+                  type="gauge"
+                  min={0}
+                  max={1200}
+                />
+              )}
+              
+              {showSensors.turbidity && (
+                <ParameterCard
+                  title="Turbidity"
+                  icon="eye"
+                  value={sensorData.turbidity}
+                  unit="NTU"
+                  data={sliceHistory(dataHistory.turbidity)}
+                  riskLevel={displayRiskLevels.turbidity}
+                  type="chart"
+                  thresholds={chartThresholds.turbidity}
+                />
+              )}
+              
+              {showSensors.probioticLevel && (
+                <ParameterCard
+                  title="Probiotic Chamber"
+                  icon="droplets"
+                  value={sensorData.probioticLevel}
+                  unit="%"
+                  data={sliceHistory(dataHistory.probioticLevel)}
+                  riskLevel={displayRiskLevels.probioticLevel}
+                  type="tank"
+                  min={0}
+                  max={100}
+                />
+              )}
+              </div>
+            </main>
+          )}
         </section>
 
         <Footer />

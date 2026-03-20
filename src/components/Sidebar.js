@@ -20,7 +20,9 @@ const Sidebar = ({
   onOpenSettings,
   onLogout,
   isCollapsed,
-  onToggleCollapse
+  onToggleCollapse,
+  activePage,
+  onNavigatePage
 }) => {
   const riskClass = overallRisk === 'high'
     ? 'danger'
@@ -49,6 +51,27 @@ const Sidebar = ({
         <span className="sidebar-toggle-glyph">&lt;</span>
       </button>
 
+      <section className="sidebar-section sidebar-nav-section">
+        <h3 className="sidebar-title">
+          <Icon name="list" size={16} />
+          <span className="sidebar-title-text">Navigation</span>
+        </h3>
+        <div className="sidebar-nav-actions">
+          <button
+            className={`sidebar-btn sidebar-nav-btn ${activePage === 'overview' ? 'active' : ''}`}
+            onClick={() => onNavigatePage('overview')}
+          >
+            Overview
+          </button>
+          <button
+            className={`sidebar-btn sidebar-nav-btn ${activePage === 'actuators' ? 'active' : ''}`}
+            onClick={() => onNavigatePage('actuators')}
+          >
+            Actuators
+          </button>
+        </div>
+      </section>
+
       <section className="sidebar-section">
         <h3 className="sidebar-title">
           <Icon name="list" size={16} />
@@ -62,18 +85,6 @@ const Sidebar = ({
         />
         <p className="sidebar-meta">Connection: {isConnected ? 'Online' : 'Offline'}</p>
         <p className="sidebar-meta">Last update: {freshnessLabel}</p>
-      </section>
-
-      <section className="sidebar-section">
-        <h3 className="sidebar-title">
-          <Icon name="settings" size={16} />
-          <span className="sidebar-title-text">Quick Actions</span>
-        </h3>
-        <div className="sidebar-actions">
-          <button className="sidebar-btn" onClick={onExportData}>Export Data</button>
-          <button className="sidebar-btn" onClick={onOpenSettings}>Settings</button>
-          <button className="sidebar-btn danger" onClick={onLogout}>Sign Out</button>
-        </div>
       </section>
 
       <section className="sidebar-section">
@@ -113,6 +124,18 @@ const Sidebar = ({
         </h3>
         <p className="sidebar-meta">Active alerts: {alertCount}</p>
         <p className="sidebar-meta">ML service: {mlServiceStatus}</p>
+      </section>
+
+      <section className="sidebar-section">
+        <h3 className="sidebar-title">
+          <Icon name="settings" size={16} />
+          <span className="sidebar-title-text">Quick Actions</span>
+        </h3>
+        <div className="sidebar-actions">
+          <button className="sidebar-btn" onClick={onExportData}>Export Data</button>
+          <button className="sidebar-btn" onClick={onOpenSettings}>Settings</button>
+          <button className="sidebar-btn danger" onClick={onLogout}>Sign Out</button>
+        </div>
       </section>
     </aside>
   );
