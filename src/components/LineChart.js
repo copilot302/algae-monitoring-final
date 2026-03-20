@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -23,7 +23,46 @@ ChartJS.register(
   Filler
 );
 
-const LineChart = ({ data, color = '#4dd0e1', unit = '' }) => {
+const thresholdBandPlugin = {
+  id: 'thresholdBand',
+  beforeDraw: (chart, _args, options) => {
+    if (!options || options.low == null || options.high == null) return;
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea || !scales?.y) return;
+
+    const lowY = scales.y.getPixelForValue(options.low);
+    const highY = scales.y.getPixelForValue(options.high);
+    const top = Math.min(lowY, highY);
+    const height = Math.abs(lowY - highY);
+
+    ctx.save();
+    ctx.fillStyle = options.fillColor || 'rgba(16, 185, 129, 0.12)';
+    ctx.fillRect(chartArea.left, top, chartArea.right - chartArea.left, height);
+    ctx.restore();
+  }
+};
+
+const crosshairPlugin = {
+  id: 'crosshair',
+  afterDraw: (chart, _args, options) => {
+    const active = chart.tooltip?.getActiveElements?.();
+    if (!active || active.length === 0) return;
+
+    const { ctx, chartArea } = chart;
+    const x = active[0].element.x;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x, chartArea.top);
+    ctx.lineTo(x, chartArea.bottom);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = options?.color || 'rgba(148, 163, 184, 0.5)';
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+
+const LineChart = ({ data, color = '#4dd0e1', unit = '', thresholds }) => {
   const chartRef = useRef();
 
   const chartData = {
@@ -34,9 +73,9 @@ const LineChart = ({ data, color = '#4dd0e1', unit = '' }) => {
         data: data,
         borderColor: color,
         backgroundColor: `${color}20`,
-        borderWidth: 2,
+        borderWidth: 2.2,
         fill: true,
-        tension: 0.4,
+        tension: 0.34,
         pointRadius: 0,
         pointHoverRadius: 4,
         pointBackgroundColor: color,
@@ -55,9 +94,9 @@ const LineChart = ({ data, color = '#4dd0e1', unit = '' }) => {
       tooltip: {
         mode: 'index',
         intersect: false,
-        backgroundColor: 'rgba(26, 26, 46, 0.9)',
-        titleColor: '#ffffff',
-        bodyColor: '#ffffff',
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        titleColor: '#e2e8f0',
+        bodyColor: '#e2e8f0',
         borderColor: color,
         borderWidth: 1,
         callbacks: {
@@ -66,16 +105,26 @@ const LineChart = ({ data, color = '#4dd0e1', unit = '' }) => {
           }
         }
       },
+      thresholdBand: thresholds
+        ? {
+            low: thresholds.low,
+            high: thresholds.high,
+            fillColor: 'rgba(52, 211, 153, 0.12)'
+          }
+        : undefined,
+      crosshair: {
+        color: 'rgba(148, 163, 184, 0.45)'
+      }
     },
     scales: {
       x: {
         display: true,
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)',
+          color: 'rgba(148, 163, 184, 0.12)',
           drawBorder: false,
         },
         ticks: {
-          color: '#90a4ae',
+          color: '#9fb0c9',
           font: {
             size: 10,
           },
@@ -85,11 +134,11 @@ const LineChart = ({ data, color = '#4dd0e1', unit = '' }) => {
       y: {
         display: true,
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)',
+          color: 'rgba(148, 163, 184, 0.12)',
           drawBorder: false,
         },
         ticks: {
-          color: '#90a4ae',
+          color: '#9fb0c9',
           font: {
             size: 10,
           },
@@ -111,7 +160,7 @@ const LineChart = ({ data, color = '#4dd0e1', unit = '' }) => {
     },
   };
 
-  return <Line ref={chartRef} data={chartData} options={options} />;
+  return <Line ref={chartRef} data={chartData} options={options} plugins={[thresholdBandPlugin, crosshairPlugin]} />;
 };
 
 export default LineChart;

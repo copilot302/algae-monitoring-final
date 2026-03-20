@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import LandingPage from './components/LandingPage';
 import Header from './components/Header';
-import Sidebar from './components/Sidebar';
+import DeviceSelector from './components/DeviceSelector';
 import ParameterCard from './components/ParameterCard';
+import RiskAssessment from './components/RiskAssessment';
 import Footer from './components/Footer';
 import DateRangeDialog from './components/dialogs/DateRangeDialog';
 import SettingsDialog from './components/dialogs/SettingsDialog';
@@ -93,11 +94,7 @@ const App = () => {
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [showRiskDetails, setShowRiskDetails] = useState(false);
   const [settings, setSettings] = useState(loadSettings);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
-  const [actionHistory, setActionHistory] = useState([]);
 
   const pollIntervalSeconds = Math.max(5, Number(settings.data.pollIntervalSeconds) || 5);
   const historyWindowHours = Math.max(1, Number(settings.data.historyWindowHours) || 24);
@@ -171,93 +168,6 @@ const App = () => {
     ? 'app risk-high-contrast'
     : 'app';
 
-  useEffect(() => {
-    if (isConnected) {
-      setLastUpdatedAt(new Date());
-    }
-  }, [sensorData, isConnected]);
-
-  const alertCount = useMemo(
-    () => Object.values(displayRiskLevels).filter((risk) => risk === 'moderate' || risk === 'high').length,
-    [displayRiskLevels]
-  );
-
-  const freshnessLabel = useMemo(() => {
-    if (!lastUpdatedAt) return 'Waiting for data';
-    const seconds = Math.max(0, Math.round((Date.now() - lastUpdatedAt.getTime()) / 1000));
-    if (seconds < 60) return `${seconds}s ago`;
-    return `${Math.round(seconds / 60)}m ago`;
-  }, [lastUpdatedAt]);
-
-  const lastAction = useMemo(() => {
-    const rawAction = mlPrediction?.action;
-    const actionReason = typeof rawAction?.reason === 'string'
-      ? rawAction.reason
-      : typeof rawAction === 'string'
-        ? rawAction
-        : '';
-
-    const actionText = actionReason.trim() || (() => {
-      if (displayOverallRisk === 'high') return 'Aerator Activated';
-      if (displayOverallRisk === 'moderate') return 'Probiotics Released';
-      if (displayOverallRisk === 'normal') return 'No Action Needed';
-      return 'No action recorded';
-    })();
-
-    let status = 'Executed';
-    if (!isConnected) status = 'Queued';
-    if (displayOverallRisk === 'unknown' || mlServiceStatus === 'unavailable') status = 'Pending';
-
-    return {
-      text: actionText,
-      source: isMlDriven ? 'ML Recommendation' : 'Rule-Based',
-      status,
-      time: freshnessLabel
-    };
-  }, [mlPrediction, displayOverallRisk, isConnected, mlServiceStatus, isMlDriven, freshnessLabel]);
-
-  useEffect(() => {
-    setActionHistory((previous) => {
-      const current = {
-        id: Date.now(),
-        text: lastAction.text,
-        status: lastAction.status,
-        source: lastAction.source
-      };
-
-      const latest = previous[0];
-      if (
-        latest &&
-        latest.text === current.text &&
-        latest.status === current.status &&
-        latest.source === current.source
-      ) {
-        return previous;
-      }
-
-      return [current, ...previous].slice(0, 5);
-    });
-  }, [lastAction.text, lastAction.status, lastAction.source]);
-
-  const latestPredictionConfidence = mlPrediction?.confidence
-    ? `${(mlPrediction.confidence * 100).toFixed(1)}%`
-    : 'N/A';
-
-  const chartThresholds = {
-    temperature: {
-      low: settings.alerts.temperatureNormalMax - 5,
-      high: settings.alerts.temperatureNormalMax
-    },
-    dissolvedOxygen: {
-      low: settings.alerts.dissolvedOxygenNormalMin,
-      high: settings.alerts.dissolvedOxygenNormalMin + 3
-    },
-    turbidity: {
-      low: 0,
-      high: settings.alerts.turbidityNormalMax
-    }
-  };
-
   // If not authenticated, show landing page
   if (!authenticatedDevices) {
     return <LandingPage onAuthenticated={handleAuthenticated} />;
@@ -309,83 +219,25 @@ const App = () => {
 
   return (
     <div className={appClassName}>
-      <div className={`container with-right-sidebar ${isSidebarCollapsed ? 'sidebar-mini' : 'sidebar-full'}`}>
-        {isSidebarCollapsed && (
-          <button
-            className="sidebar-reopen-btn"
-            onClick={() => setIsSidebarCollapsed(false)}
-            aria-label="Open sidebar"
-          >
-            &gt;
-          </button>
-        )}
-
-        <section className="top-panel">
-          <div className="top-panel-content">
-            <Header 
-              isConnected={isConnected}
-              overallRisk={displayOverallRisk}
-              onExportData={handleExportData}
-              onOpenSettings={() => setIsSettingsOpen(true)}
-              onLogout={handleLogout}
-              exportFormat={settings.data.exportFormat}
-              showRiskDetails={showRiskDetails}
-              onToggleRiskDetails={() => setShowRiskDetails((prev) => !prev)}
-              latestPredictionConfidence={latestPredictionConfidence}
-              alertCount={alertCount}
-              isMlDriven={isMlDriven}
-              mlServiceStatus={mlServiceStatus}
-              recommendedAction={mlPrediction?.action?.reason}
-            />
-
-            <section className="kpi-strip" aria-label="Dashboard quick metrics">
-              <article className="kpi-card">
-                <p className="kpi-label">Data Freshness</p>
-                <p className="kpi-value">{freshnessLabel}</p>
-              </article>
-              <article className="kpi-card">
-                <p className="kpi-label">Active Alerts</p>
-                <p className="kpi-value">{alertCount}</p>
-              </article>
-              <article className="kpi-card">
-                <p className="kpi-label">Last Action</p>
-                <p className="kpi-value">{lastAction.text}</p>
-                <p className="kpi-subtext">{lastAction.time} • {lastAction.source}</p>
-                <span className={`kpi-status-badge ${lastAction.status.toLowerCase()}`}>{lastAction.status}</span>
-              </article>
-              <article className="kpi-card">
-                <p className="kpi-label">ML Confidence</p>
-                <p className="kpi-value">{latestPredictionConfidence}</p>
-              </article>
-            </section>
-
-          </div>
-        </section>
-
-        <section className="dashboard-layout">
-          <Sidebar
-            selectedDevice={selectedDevice}
-            onDeviceChange={setSelectedDevice}
-            allowedDevices={authenticatedDevices}
-            deviceAliases={settings.device.aliases}
-            isConnected={isConnected}
-            freshnessLabel={freshnessLabel}
-            lastAction={lastAction}
-            actionHistory={actionHistory}
-            overallRisk={displayOverallRisk}
-            latestPredictionConfidence={latestPredictionConfidence}
-            alertCount={alertCount}
-            mlServiceStatus={mlServiceStatus}
-            isMlDriven={isMlDriven}
-            onExportData={handleExportData}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            onLogout={handleLogout}
-            isCollapsed={isSidebarCollapsed}
-            onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
-          />
-
-          <main className="dashboard">
-            <div className="parameter-grid">
+      <div className="container">
+        <Header 
+          isConnected={isConnected}
+          overallRisk={displayOverallRisk}
+          onExportData={handleExportData}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onLogout={handleLogout}
+          exportFormat={settings.data.exportFormat}
+        />
+        
+        <DeviceSelector
+          selectedDevice={selectedDevice}
+          onDeviceChange={setSelectedDevice}
+          allowedDevices={authenticatedDevices}
+          deviceAliases={settings.device.aliases}
+        />
+        
+        <main className="dashboard">
+          <div className="parameter-grid">
             {showSensors.temperature && (
               <ParameterCard
                 title="Temperature"
@@ -395,7 +247,6 @@ const App = () => {
                 data={sliceHistory(dataHistory.temperature)}
                 riskLevel={displayRiskLevels.temperature}
                 type="chart"
-                thresholds={chartThresholds.temperature}
               />
             )}
             
@@ -408,7 +259,6 @@ const App = () => {
                 data={sliceHistory(dataHistory.dissolvedOxygen)}
                 riskLevel={displayRiskLevels.dissolvedOxygen}
                 type="chart"
-                thresholds={chartThresholds.dissolvedOxygen}
               />
             )}
             
@@ -449,7 +299,6 @@ const App = () => {
                 data={sliceHistory(dataHistory.turbidity)}
                 riskLevel={displayRiskLevels.turbidity}
                 type="chart"
-                thresholds={chartThresholds.turbidity}
               />
             )}
             
@@ -466,10 +315,18 @@ const App = () => {
                 max={100}
               />
             )}
-            </div>
-          </main>
-        </section>
-
+            
+            <RiskAssessment
+              overallRisk={displayOverallRisk}
+              riskLevels={displayRiskLevels}
+              sensorData={sensorData}
+              mlPrediction={mlPrediction}
+              mlServiceStatus={mlServiceStatus}
+              isMlDriven={isMlDriven}
+            />
+          </div>
+        </main>
+        
         <Footer />
         
         <DateRangeDialog

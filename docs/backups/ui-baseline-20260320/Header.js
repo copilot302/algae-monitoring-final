@@ -2,21 +2,7 @@ import React from 'react';
 import Icon from './Icon';
 import { Download, Settings, LogOut } from 'lucide-react';
 
-const Header = ({
-  isConnected,
-  overallRisk,
-  onExportData,
-  onOpenSettings,
-  onLogout,
-  exportFormat,
-  showRiskDetails,
-  onToggleRiskDetails,
-  latestPredictionConfidence,
-  alertCount,
-  isMlDriven,
-  mlServiceStatus,
-  recommendedAction
-}) => {
+const Header = ({ isConnected, overallRisk, onExportData, onOpenSettings, onLogout, exportFormat }) => {
   const getRiskMessage = (risk) => {
     switch (risk) {
       case 'normal':
@@ -87,29 +73,6 @@ const Header = ({
         <Icon name="alertTriangle" size={20} />
         <span>{getRiskMessage(overallRisk)}</span>
       </div>
-
-      <section className="risk-summary-panel" aria-label="Risk summary details">
-        <div className="risk-summary-head">
-          <div>
-            <p className="risk-summary-label">Risk overview</p>
-            <p className={`risk-summary-value ${overallRisk}`}>{String(overallRisk).toUpperCase()}</p>
-          </div>
-          <button className="risk-summary-toggle" onClick={onToggleRiskDetails}>
-            {showRiskDetails ? 'Hide details' : 'Show details'}
-          </button>
-        </div>
-
-        {showRiskDetails && (
-          <div className="risk-summary-body">
-            <p><strong>ML source:</strong> {isMlDriven ? 'Machine Learning prediction' : mlServiceStatus}</p>
-            <p><strong>Confidence:</strong> {latestPredictionConfidence}</p>
-            <p><strong>Alerts in sensors:</strong> {alertCount}</p>
-            {recommendedAction && (
-              <p><strong>Recommended action:</strong> {recommendedAction}</p>
-            )}
-          </div>
-        )}
-      </section>
     </header>
   );
 };

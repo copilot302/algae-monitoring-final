@@ -24,10 +24,9 @@
 
 /* Modal Container */
 .modal {
-  background: linear-gradient(180deg, rgba(17, 29, 45, 0.98), rgba(11, 20, 31, 0.98));
-  border-radius: 16px;
-  box-shadow: 0 20px 56px rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   width: 90%;
   max-width: 500px;
   max-height: 90vh;
@@ -53,7 +52,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .modal-header h2 {
@@ -104,7 +103,7 @@
 .form-group select {
   width: 100%;
   padding: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.26);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 6px;
   font-size: 1rem;
   background-color: rgba(255, 255, 255, 0.1);
@@ -150,20 +149,20 @@
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, rgba(34, 211, 238, 0.95), rgba(8, 145, 178, 0.95));
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
   color: white;
 }
 
 .btn-primary:hover {
-  background: linear-gradient(180deg, rgba(103, 232, 249, 0.95), rgba(6, 182, 212, 0.95));
+  background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.35);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }
 
 .btn-secondary {
-  background-color: rgba(148, 163, 184, 0.2);
+  background-color: rgba(255, 255, 255, 0.1);
   color: white;
-  border: 1px solid rgba(148, 163, 184, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .btn-secondary:hover {
@@ -231,7 +230,7 @@
 .settings-keys {
   margin-top: 16px;
   padding: 14px;
-  background: rgba(148, 163, 184, 0.08);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -273,7 +272,7 @@
 .settings-muted {
   margin-top: 8px;
   font-size: 0.8rem;
-  color: #b7c5d9;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .settings-reset-panel {
@@ -318,9 +317,9 @@
 
 .export-preview-panel {
   margin-top: 18px;
-  border: 1px solid rgba(56, 189, 248, 0.28);
-  border-radius: 12px;
-  background: rgba(10, 20, 32, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.15);
   padding: 12px;
 }
 

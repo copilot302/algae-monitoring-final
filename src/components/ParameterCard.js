@@ -13,6 +13,7 @@ const ParameterCard = ({
   data, 
   riskLevel, 
   type = 'chart',
+  thresholds,
   min = 0,
   max = 100 
 }) => {
@@ -42,6 +43,10 @@ const ParameterCard = ({
       default: return 'Stable';
     }
   };
+
+  const safeRangeText = thresholds
+    ? `${thresholds.low.toFixed(1)} - ${thresholds.high.toFixed(1)}${unit}`
+    : null;
 
   return (
     <div className={`parameter-card ${riskLevel}`}>
@@ -76,12 +81,18 @@ const ParameterCard = ({
           </div>
         ) : (
           <>
+            <div className="chart-controls">
+              <div className="chart-pill active">Live</div>
+              <div className="chart-pill">6h</div>
+              <div className="chart-pill">24h</div>
+            </div>
             <div className="value-display">
               <span className="value">{value.toFixed(1)}</span>
               <span className="unit">{unit}</span>
             </div>
+            {safeRangeText && <p className="safe-range-label">Target range: {safeRangeText}</p>}
             <div className="chart-container">
-              <LineChart data={data} color="#4dd0e1" unit={unit} />
+              <LineChart data={data} color="#4dd0e1" unit={unit} thresholds={thresholds} />
             </div>
           </>
         )}
