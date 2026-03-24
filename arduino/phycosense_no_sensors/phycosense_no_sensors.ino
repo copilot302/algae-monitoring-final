@@ -55,17 +55,12 @@ bool isUSBPowered = false;
 
 // --- Demo Scenario State ---
 // Phase 1 (0-15s):  Device out of water (air readings)
-// Phase 2 (15s+):   Device in high-risk bloom water (temp/turbidity/EC = HIGH RISK)
+// Phase 2 (15s+):   Rotates through normal/moderate/high/extreme profiles
 unsigned long demoStartTime = 0;
 bool demoStarted = false;
-
-// High-risk bloom targets (after 15 seconds)
-// Temp    > 25°C  → HIGH (we use ~27.5°C)
-// Turbidity > 50 NTU → HIGH (we use ~70 NTU)
-// EC      > 1000 µS/cm → HIGH (we use ~1120 µS/cm)
-float bloomTemp    = 27.5;
-float bloomTurb    = 70.0;
-float bloomEC      = 1120.0;
+unsigned long lastScenarioChange = 0;
+const unsigned long SCENARIO_CHANGE_INTERVAL = 20000; // Change every 20s
+uint8_t demoScenario = 2; // 0=Normal, 1=Moderate, 2=Mixed High, 3=Extreme High
 
 // Read Battery Voltage with averaging
 float readBatteryVoltage()
@@ -559,28 +554,49 @@ void sendDataToServer() {
         sendPh = 7.0 + random(-2, 2) * 0.1;            // normal, sensor not in water
         sendDissolvedOxygen = 7.8 + random(-3, 3) * 0.1; // normal oxygen in air
     } else {
-        // ── Phase 2: High-risk algae bloom water (15s+) ──────────────────
-        // Temp / Turbidity / EC  → HIGH RISK, drift minimally
-        // pH / DO                → normal mock (sensors not connected)
-        Serial.println("── PHASE 2: High-risk bloom water ──");
+        // ── Phase 2: Randomized water quality scenarios (15s+) ───────────
+        if (lastScenarioChange == 0 || millis() - lastScenarioChange >= SCENARIO_CHANGE_INTERVAL) {
+            demoScenario = (uint8_t)random(0, 4);
+            lastScenarioChange = millis();
+        }
 
-        // Drift bloom values slightly each reading to look live
-        bloomTemp += (random(-2, 3) * 0.05f);   // ±0.1°C max per tick
-        bloomTurb += (random(-3, 4) * 0.2f);    // ±0.6 NTU max per tick
-        bloomEC   += (random(-4, 5) * 1.0f);    // ±4 µS/cm max per tick
+        switch (demoScenario) {
+            case 0: // Normal profile
+                Serial.println("── PHASE 2: Scenario NORMAL ──");
+                sendTemperature = 22.0 + random(0, 26) * 0.1;      // 22.0-24.5
+                sendTurbidity = 2.0 + random(0, 71) * 0.1;         // 2.0-9.0
+                sendEc = 450 + random(0, 331);                     // 450-780
+                sendPh = 7.1 + random(0, 13) * 0.1;                // 7.1-8.3
+                sendDissolvedOxygen = 5.5 + random(0, 21) * 0.1;   // 5.5-7.5
+                break;
 
-        // Clamp to keep firmly in HIGH-RISK zone
-        bloomTemp = constrain(bloomTemp, 26.5f, 28.5f);   // HIGH: > 25°C
-        bloomTurb = constrain(bloomTurb, 60.0f, 80.0f);   // HIGH: > 50 NTU
-        bloomEC   = constrain(bloomEC,  1050.0f, 1200.0f);// HIGH: > 1000 µS/cm
+            case 1: // Moderate profile
+                Serial.println("── PHASE 2: Scenario MODERATE ──");
+                sendTemperature = 21.0 + random(0, 46) * 0.1;      // 21.0-25.5
+                sendTurbidity = 12.0 + random(0, 331) * 0.1;       // 12.0-45.0
+                sendEc = 820 + random(0, 171);                     // 820-990
+                sendPh = 8.4 + random(0, 6) * 0.1;                 // 8.4-8.9
+                sendDissolvedOxygen = 2.6 + random(0, 23) * 0.1;   // 2.6-4.8
+                break;
 
-        sendTemperature = bloomTemp;
-        sendTurbidity = bloomTurb;
-        sendEc = (int)bloomEC;
+            case 2: // Mixed high profile (can yield lower confidence)
+                Serial.println("── PHASE 2: Scenario MIXED HIGH ──");
+                sendTemperature = 26.0 + random(0, 31) * 0.1;      // 26.0-29.0
+                sendTurbidity = 60.0 + random(0, 181) * 0.1;       // 60.0-78.0
+                sendEc = 1050 + random(0, 131);                    // 1050-1180
+                sendPh = 7.6 + random(0, 7) * 0.1;                 // 7.6-8.2
+                sendDissolvedOxygen = 6.0 + random(0, 9) * 0.1;    // 6.0-6.8
+                break;
 
-        // pH and DO stay normal — sensors not connected to these parameters
-        sendPh = 7.8 + random(-2, 2) * 0.1;               // 7.6-8.0 (normal)
-        sendDissolvedOxygen = 6.5 + random(-3, 3) * 0.1; // 6.2-6.8 mg/L (normal)
+            default: // Extreme high profile (usually higher confidence)
+                Serial.println("── PHASE 2: Scenario EXTREME HIGH ──");
+                sendTemperature = 29.0 + random(0, 41) * 0.1;      // 29.0-33.0
+                sendTurbidity = 85.0 + random(0, 551) * 0.1;       // 85.0-140.0
+                sendEc = 1250 + random(0, 451);                    // 1250-1700
+                sendPh = 9.1 + random(0, 8) * 0.1;                 // 9.1-9.8
+                sendDissolvedOxygen = 1.2 + random(0, 9) * 0.1;    // 1.2-2.0
+                break;
+        }
     }
 
     doc["temperature"] = sendTemperature;
@@ -689,6 +705,9 @@ void setup()
     pinMode(BATTERY_PIN, INPUT);
     analogReadResolution(12);
     analogSetAttenuation(ADC_11db);
+
+    // Seed random generator so mock data isn't repetitive after reboot
+    randomSeed((uint32_t)(micros() ^ analogRead(BATTERY_PIN)));
     
     // Initial battery reading
     batteryVoltage = readBatteryVoltage();
